@@ -161,6 +161,9 @@ namespace ompl
 
                 /** \brief The parent motion in the exploration tree */
                 Motion *parent{nullptr};
+
+                /** \brief Testing method for tracking "time" when accounting fordynamic obstacles */
+                unsigned int step{0};
             };
 
             /** \brief Free the memory allocated by this planner */

@@ -1,7 +1,7 @@
 /*********************************************************************
 * Software License Agreement (BSD License)
 *
-*  Copyright (c) 2010, Rice University
+*  Copyright (c) 2008, Willow Garage, Inc.
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
 *     copyright notice, this list of conditions and the following
 *     disclaimer in the documentation and/or other materials provided
 *     with the distribution.
-*   * Neither the name of the Rice University nor the names of its
+*   * Neither the name of the Willow Garage nor the names of its
 *     contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
 *
@@ -32,49 +32,58 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-/* Author: Ioan Sucan */
+/* Author: Justin Kottinger */
 
-#ifndef OMPL_BASE_DISCRETE_MOTION_VALIDATOR_
-#define OMPL_BASE_DISCRETE_MOTION_VALIDATOR_
+#ifndef OMPL_MULTIROBOT_GEOMETRIC_PLANNERS_PP_
+#define OMPL_MULTIROBOT_GEOMETRIC_PLANNERS_PP_
 
-#include "ompl/base/MotionValidator.h"
-#include "ompl/base/SpaceInformation.h"
+#include "ompl/multirobot/geometric/planners/PlannerIncludes.h"
+#include "ompl/base/Planner.h"
+
 
 namespace ompl
 {
-    namespace base
+    namespace multirobot
     {
-        /** \brief A motion validator that only uses the state validity checker. Motions are checked for validity at a
-         * specified resolution. */
-        class DiscreteMotionValidator : public MotionValidator
+        namespace geometric
         {
-        public:
-            /** \brief Constructor */
-            DiscreteMotionValidator(SpaceInformation *si) : MotionValidator(si)
+            /**
+            @anchor gPP
+            @par Short description
+            Prioritized Planning (PP) is a decoupled planning framework 
+            where robots are assigned a priority and planned for sequentially. 
+            Robots of lower priority must avoid higher priority robots by 
+            treating them as dynamic obstacles.
+            */
+
+            /** \brief PP Algorithm */
+            class PP : public multirobot::base::Planner
             {
-                defaultSettings();
-            }
+            public:
+                /** \brief Constructor */
+                PP(const multirobot::base::SpaceInformationPtr &si, ompl::base::PlannerPtr solver = nullptr);
 
-            /** \brief Constructor */
-            DiscreteMotionValidator(const SpaceInformationPtr &si) : MotionValidator(si)
-            {
-                defaultSettings();
-            }
+                /** \brief Destructor */
+                ~PP() override;
 
-            ~DiscreteMotionValidator() override = default;
+                void addPathAsDynamicObstacles(const unsigned int index, const ompl::geometric::PathGeometricPtr path);
 
-            bool checkMotion(const State *s1, const State *s2) const override;
+                void getPlannerData(ompl::base::PlannerData &data) const override;
 
-            // testing function for dynamic obstacles. will eventually replace above defintion.
-            bool checkMotionTest(const State *s1, const State *s2, unsigned int step = 0) const override;
+                ompl::base::PlannerStatus solve(const ompl::base::PlannerTerminationCondition &ptc) override;
 
-            bool checkMotion(const State *s1, const State *s2, std::pair<State *, double> &lastValid) const override;
+                void clear() override;
 
-        private:
-            StateSpace *stateSpace_;
+                void setup() override;
 
-            void defaultSettings();
-        };
+            protected:
+
+                /** \brief Free the memory allocated by this planner */
+                void freeMemory();
+
+                ompl::base::PlannerPtr solver_;
+            };
+        }
     }
 }
 

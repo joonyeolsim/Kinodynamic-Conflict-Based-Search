@@ -33,12 +33,16 @@
 *********************************************************************/
 
 /* Author: Ioan Sucan */
+/* Ammended by Justin Kottinger for time-dependent constraints */
 
 #ifndef OMPL_BASE_STATE_VALIDITY_CHECKER_
 #define OMPL_BASE_STATE_VALIDITY_CHECKER_
 
 #include "ompl/base/State.h"
 #include "ompl/util/ClassForward.h"
+#include <unordered_map>
+#include <vector>
+#include <limits>
 
 namespace ompl
 {
@@ -118,6 +122,46 @@ namespace ompl
                 return isValid(state);
             }
 
+            /** \brief Return true if the state is valid while accounting for dynamic obstacles */
+            virtual bool isValid(const State *state, const double time)
+            {
+                if (dynObstacles_.empty())
+                    return isValid(state);
+                else
+                {
+                    if (isValid(state))
+                    {
+                        // state is valid, test against dynamic obstacles
+                        auto obsAtTime = dynObstacles_.find(time);
+                        if (obsAtTime != dynObstacles_.end())
+                        {
+                            for (auto st = obsAtTime->second.begin(); st != obsAtTime->second.end(); st++)
+                            {
+                                if (!areStatesValid(state, *st))
+                                    return false;
+                            }
+                            return true;
+                            // return areStatesValid(state, st);
+                        }
+                        else
+                            return true;
+                    }
+                    return false;
+                }
+            }
+
+            /** \brief Function that always return true. This must be overridden when planning for dynamic obstacles */
+            virtual bool areStatesValid(const State *state1, const std::pair<const SpaceInformationPtr,const State*> state2) const
+            {
+                return (state1 && state2.first && state2.second) ? true : false;
+            }
+
+            /** \brief Add a dynamic obstacle */
+            void addDynamicObstacle(const double key, const SpaceInformationPtr si, const State* state)
+            {
+                dynObstacles_[key].push_back(std::make_pair(si, state));
+            }
+
             /** \brief Return true if the state \e state is valid. In addition, set \e dist to the distance to the
                nearest
                 invalid state (using clearance()). If a direction that moves \e state away from being invalid is
@@ -171,6 +215,9 @@ namespace ompl
 
             /** \brief The specifications of the state validity checker (its capabilities) */
             StateValidityCheckerSpecs specs_;
+
+            /** \brief A hash table that maps time steps (keys) to the values (states) that must be accounted for inside isValid() */
+            std::unordered_map<double, std::vector<std::pair<const SpaceInformationPtr,const State*>> > dynObstacles_;
         };
 
         /** \brief The simplest state validity checker: all states are valid */

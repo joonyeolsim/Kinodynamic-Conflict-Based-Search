@@ -96,6 +96,18 @@ namespace ompl
                 return stateValidityChecker_->isValid(state);
             }
 
+            /** \brief Check if a given state is valid or not */
+            bool isValid(const State *state, const double time) const
+            {
+                return stateValidityChecker_->isValid(state, time);
+            }
+
+            /** \brief method to add a dynamic obstacle */
+            void addDynamicObstacle(const double time, const SpaceInformationPtr si, const State* state)
+            {
+                stateValidityChecker_->addDynamicObstacle(time, si, state);
+            }
+
             /** \brief Return the instance of the used state space */
             const StateSpacePtr &getStateSpace() const
             {
@@ -352,6 +364,12 @@ namespace ompl
             virtual bool checkMotion(const State *s1, const State *s2) const
             {
                 return motionValidator_->checkMotion(s1, s2);
+            }
+
+            /** \brief Testing function for dynamic obstacles */
+            virtual bool checkMotionTest(const State *s1, const State *s2, unsigned int step = 0) const
+            {
+                return motionValidator_->checkMotionTest(s1, s2, step);
             }
 
             /** \brief Incrementally check if a sequence of states is valid. Given a vector of states, this routine only

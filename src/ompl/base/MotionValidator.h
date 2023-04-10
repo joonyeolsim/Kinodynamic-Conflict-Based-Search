@@ -82,6 +82,14 @@ namespace ompl
                 \note This function updates the number of valid and invalid segments. */
             virtual bool checkMotion(const State *s1, const State *s2) const = 0;
 
+            /** \brief Testing function for dynamic obstacle planning. Can eventually replace the above definition. */
+            virtual bool checkMotionTest(const State *s1, const State *s2, unsigned int step = 0) const
+            {
+                if (step <= (unsigned int)1)
+                    return checkMotion(s1, s2);
+                return checkMotion(s1, s2);
+            }
+
             /** \brief Check if the path between two states is valid. Also compute the last state that was
                 valid and the time of that state. The time is used to parametrize the motion from \e s1 to \e s2, \e s1
                being at t =

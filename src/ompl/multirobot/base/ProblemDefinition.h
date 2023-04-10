@@ -38,11 +38,12 @@
 #ifndef OMPL_MULTIROBOT_PROBLEM_DEFINITION_
 #define OMPL_MULTIROBOT_PROBLEM_DEFINITION_
 
-#include "ompl/base/State.h"
-#include "ompl/base/Goal.h"
+// #include "ompl/base/State.h"
+// #include "ompl/base/Goal.h"
+#include <ompl/base/ProblemDefinition.h>
 #include "ompl/multirobot/base/Plan.h"
 #include "ompl/multirobot/base/SpaceInformation.h"
-#include "ompl/base/ScopedState.h"
+// #include "ompl/base/ScopedState.h"
 #include <mutex>
 
 namespace ompl
@@ -51,6 +52,12 @@ namespace ompl
     {
         namespace base
         {
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::base::ProblemDefinition */
+            OMPL_CLASS_FORWARD(ProblemDefinition);
+            OMPL_CLASS_FORWARD(OptimizationObjective);
+            /// @endcond
+
             /** \brief Representation of a solution to the multi-agent planning problem */
             struct PlannerSolution
             {
@@ -71,12 +78,12 @@ namespace ompl
                 /** \brief Define a ranking for solutions */
                 bool operator<(const PlannerSolution &b) const;
 
-                // /** \brief Specify that the solution is approximate and set the difference to the goal. */
-                // void setApproximate(double difference)
-                // {
-                //     approximate_ = true;
-                //     difference_ = difference;
-                // }
+                /** \brief Specify that the solution is approximate and set the difference to the goal. */
+                void setApproximate(double difference)
+                {
+                    approximate_ = true;
+                    difference_ = difference;
+                }
 
                 // /** \brief Set the optimization objective used to optimize this solution, the cost of the solution and
                 //  * whether it was optimized or not. */
@@ -103,11 +110,11 @@ namespace ompl
                 /** \brief For efficiency reasons, keep the length of the plan as well */
                 double length_;
 
-                // /** \brief True if goal was not achieved, but an approximate solution was found */
-                // bool approximate_{false};
+                /** \brief True if goal was not achieved, but an approximate solution was found */
+                bool approximate_{false};
 
-                // /** \brief The achieved difference between the found solution and the desired goal */
-                // double difference_{0.};
+                /** \brief The achieved difference between the found solution and the desired goal */
+                double difference_{0.};
 
                 // /** \brief True if the solution was optimized to meet the specified optimization criterion */
                 // bool optimized_{false};
@@ -154,37 +161,37 @@ namespace ompl
                     return si_;
                 }
 
-                /** \brief Add a start state. The state is copied. */
-                void addStartStateAtIndex(const unsigned int index, const ompl::base::State *state)
-                {
-                    if (index + 1 >= si_->getIndividualCount())
-                        startStates_.resize(index + 1);
-                    startStates_[index].push_back(si_->getIndividual(index)->cloneState(state));
-                }
+                // /** \brief Add a start state. The state is copied. */
+                // void addStartStateAtIndex(const unsigned int index, const ompl::base::State *state)
+                // {
+                //     if (index + 1 >= si_->getIndividualCount())
+                //         startStates_.resize(index + 1);
+                //     startStates_[index].push_back(si_->getIndividual(index)->cloneState(state));
+                // }
 
-                /** \copydoc addStartStateAtIndex() */
-                void addStartStateAtIndex(const unsigned int index, const ompl::base::ScopedState<> &state)
-                {
-                    if (index + 1 >= si_->getIndividualCount())
-                        startStates_.resize(index + 1);
-                    startStates_[index].push_back(si_->getIndividual(index)->cloneState(state.get()));
+                // /** \copydoc addStartStateAtIndex() */
+                // void addStartStateAtIndex(const unsigned int index, const ompl::base::ScopedState<> &state)
+                // {
+                //     if (index + 1 >= si_->getIndividualCount())
+                //         startStates_.resize(index + 1);
+                //     startStates_[index].push_back(si_->getIndividual(index)->cloneState(state.get()));
 
-                }
+                // }
 
                 // /** \brief Check whether a specified starting state is
                 //     already included in the problem definition and
                 //     optionally return the index of that starting state */
                 // bool hasStartState(const State *state, unsigned int *startIndex = nullptr) const;
 
-                /** \brief Clear all start states (memory is freed) */
-                void clearStartStatesAtIndex(unsigned int index)
-                {
-                    if (index + 1 >= si_->getIndividualCount())
-                        startStates_.resize(index + 1);
-                    for (auto &startState : startStates_[index])
-                        si_->getIndividual(index)->freeState(startState);
-                    startStates_[index].clear();
-                }
+                // /** \brief Clear all start states (memory is freed) */
+                // void clearStartStatesAtIndex(unsigned int index)
+                // {
+                //     if (index + 1 >= si_->getIndividualCount())
+                //         startStates_.resize(index + 1);
+                //     for (auto &startState : startStates_[index])
+                //         si_->getIndividual(index)->freeState(startState);
+                //     startStates_[index].clear();
+                // }
 
                 // /** \brief Returns the number of start states */
                 // unsigned int getStartStateCount() const
@@ -192,39 +199,39 @@ namespace ompl
                 //     return startStates_.size();
                 // }
 
-                /** \brief Returns a specific start state */
-                const ompl::base::State *getIndividualStartState(unsigned int individual, unsigned int index) const
-                {
-                    return startStates_[individual][index];
-                }
+                // /** \brief Returns a specific start state */
+                // const ompl::base::State *getIndividualStartState(unsigned int individual, unsigned int index) const
+                // {
+                //     return startStates_[individual][index];
+                // }
 
-                /** \copydoc getIndividualStartState() */
-                ompl::base::State *getIndividualStartState(unsigned int individual, unsigned int index)
-                {
-                    return startStates_[individual][index];
-                }
+                // /** \copydoc getIndividualStartState() */
+                // ompl::base::State *getIndividualStartState(unsigned int individual, unsigned int index)
+                // {
+                //     return startStates_[individual][index];
+                // }
 
-                /** \brief Set the goal. */
-                void setGoalAtIndex(unsigned int index, const ompl::base::GoalPtr &goal)
-                {
-                    if (index + 1 >= si_->getIndividualCount())
-                        goals_.resize(index + 1);
-                    goals_[index] = goal;
-                }
+                // /** \brief Set the goal. */
+                // void setGoalAtIndex(unsigned int index, const ompl::base::GoalPtr &goal)
+                // {
+                //     if (index + 1 >= si_->getIndividualCount())
+                //         goals_.resize(index + 1);
+                //     goals_[index] = goal;
+                // }
 
-                /** \brief Clear the goal. Memory is freed. */
-                void clearGoalAtIndex(unsigned int index)
-                {
-                    if (index + 1 >= si_->getIndividualCount())
-                        goals_.resize(index + 1);
-                    goals_[index].reset();
-                }
+                // /** \brief Clear the goal. Memory is freed. */
+                // void clearGoalAtIndex(unsigned int index)
+                // {
+                //     if (index + 1 >= si_->getIndividualCount())
+                //         goals_.resize(index + 1);
+                //     goals_[index].reset();
+                // }
 
-                /** \brief Return the current goal */
-                const ompl::base::GoalPtr &getGoalAtIndex(unsigned int index) const
-                {
-                    return goals_[index];
-                }
+                // /** \brief Return the current goal */
+                // const ompl::base::GoalPtr &getGoalAtIndex(unsigned int index) const
+                // {
+                //     return goals_[index];
+                // }
 
                 // /** \brief Get all the input states. This includes start
                 //     states and states that are part of goal regions that
@@ -232,27 +239,41 @@ namespace ompl
                 //     ompl::base::GoalStates. */
                 // void getInputStates(std::vector<const State *> &states) const;
 
-                /** \brief In the simplest case possible, we have a single
-                    starting state and a single goal state.
+                /** \brief Adds an individual as part of the multi-agent state space. */
+                void addIndividual(const ompl::base::ProblemDefinitionPtr &individual);
 
-                    This function simply configures the problem definition
-                    using these states (performs the needed calls to
-                    addStartState(), creates an instance of
-                    ompl::base::GoalState and calls setGoal() on it. */
-                void setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::State *start, const ompl::base::State *goal,
-                                       double threshold = std::numeric_limits<double>::epsilon());
+                /** \brief Get a specific subspace from the compound state space */
+                const ompl::base::ProblemDefinitionPtr &getIndividual(unsigned int index) const;
 
-                /** \copydoc setStartAndGoalStatesAtIndex() */
-                void setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::ScopedState<> &start, const ompl::base::ScopedState<> &goal,
-                                       const double threshold = std::numeric_limits<double>::epsilon())
+                /** \brief Get the number of individuals that make up the multi-agent state space */
+                unsigned int getIndividualCount() const;
+
+                void lock()
                 {
-                    setStartAndGoalStatesAtIndex(index, start.get(), goal.get(), threshold);
+                    locked_ = true;
                 }
 
+                // /** \brief In the simplest case possible, we have a single
+                //     starting state and a single goal state.
 
-                /** \brief A simple form of setting the goal. This is called by setStartAndGoalStates(). A more general form
-                 * is setGoalAtIndex() */
-                void setGoalStateAtIndex(unsigned int index, const ompl::base::State *goal, double threshold = std::numeric_limits<double>::epsilon());
+                //     This function simply configures the problem definition
+                //     using these states (performs the needed calls to
+                //     addStartState(), creates an instance of
+                //     ompl::base::GoalState and calls setGoal() on it. */
+                // void setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::State *start, const ompl::base::State *goal,
+                //                        double threshold = std::numeric_limits<double>::epsilon());
+
+                // /** \copydoc setStartAndGoalStatesAtIndex() */
+                // void setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::ScopedState<> &start, const ompl::base::ScopedState<> &goal,
+                //                        const double threshold = std::numeric_limits<double>::epsilon())
+                // {
+                //     setStartAndGoalStatesAtIndex(index, start.get(), goal.get(), threshold);
+                // }
+
+
+                // /** \brief A simple form of setting the goal. This is called by setStartAndGoalStates(). A more general form
+                //  * is setGoalAtIndex() */
+                // void setGoalStateAtIndex(unsigned int index, const ompl::base::State *goal, double threshold = std::numeric_limits<double>::epsilon());
 
                 // /** \copydoc setStartAndGoalStates() */
                 // void setStartAndGoalStates(const ScopedState<> &start, const ScopedState<> &goal,
@@ -369,11 +390,11 @@ namespace ompl
                 //     Optionally, the distance between the desired goal and the one actually achieved is set by \e difference.
                 //     Optionally, the name of the planner that generated the solution
                 // */
-                // void addSolutionPath(const PathPtr &path, bool approximate = false, double difference = -1.0,
-                //                      const std::string &plannerName = "Unknown") const;
+                void addSolutionPlan(const PlanPtr &path, bool approximate = false, double difference = -1.0,
+                                     const std::string &plannerName = "Unknown") const;
 
-                // /** \brief Add a solution path in a thread-safe manner. Multiple solutions can be set for a goal. */
-                // void addSolutionPath(const PlannerSolution &sol) const;
+                /** \brief Add a solution path in a thread-safe manner. Multiple solutions can be set for a goal. */
+                void addSolutionPlan(const PlannerSolution &sol) const;
 
                 // /** \brief Get the number of solutions already found */
                 // std::size_t getSolutionCount() const;
@@ -497,11 +518,14 @@ namespace ompl
                 /** \brief The multi-agent space information this problem definition is for */
                 SpaceInformationPtr si_;
 
-                /** \brief The set of start states for every agent */
-                std::vector<std::vector<ompl::base::State *>> startStates_;
+                /** \brief The individual space informations that make up the multi-agent state space */
+                std::vector<ompl::base::ProblemDefinitionPtr> individuals_;
 
-                /** \brief The goal representations for every agent */
-                std::vector<ompl::base::GoalPtr> goals_;
+                /** \brief The number of indivudals in the multi-agent state space */
+                unsigned int individualCount_{0u};
+
+                /** \brief Boolean that indicates that there are no additional individuals to add */
+                bool locked_;
 
                 // /** \brief A Representation of a proof of non-existence of a solution for this problem definition */
                 // SolutionNonExistenceProofPtr nonExistenceProof_;

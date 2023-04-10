@@ -143,3 +143,61 @@ bool ompl::base::DiscreteMotionValidator::checkMotion(const State *s1, const Sta
 
     return result;
 }
+
+bool ompl::base::DiscreteMotionValidator::checkMotionTest(const State *s1, const State *s2, unsigned int step) const
+{
+    // std::cout << step << std::endl;
+    /* assume motion starts in a valid configuration so s1 is valid */
+    if (!si_->isValid(s2, ((double)step + 1))) // t_true(s2) = step + (double)1
+    {
+        invalid_++;
+        return false;
+    }
+
+    bool result = true;
+    int nd = stateSpace_->validSegmentCount(s1, s2);
+
+    /* initialize the queue of test positions */
+    std::queue<std::pair<int, int>> pos;
+    if (nd >= 2)
+    {
+        pos.emplace(1, nd - 1);
+
+        /* temporary storage for the checked state */
+        State *test = si_->allocState();
+
+        /* repeatedly subdivide the path segment in the middle (and check the middle) */
+        int nxtStep = 0;
+        while (!pos.empty())
+        {
+            nxtStep++;
+            std::pair<int, int> x = pos.front();
+
+            int mid = (x.first + x.second) / 2;
+            double t = (double)mid / (double)nd;
+            stateSpace_->interpolate(s1, s2, t, test); // t_true(test) = step + (double)mid / (double)nd
+
+            if (!si_->isValid(test, step + nxtStep))
+            {
+                result = false;
+                break;
+            }
+
+            pos.pop();
+
+            if (x.first < mid)
+                pos.emplace(x.first, mid - 1);
+            if (x.second > mid)
+                pos.emplace(mid + 1, x.second);
+        }
+
+        si_->freeState(test);
+    }
+
+    if (result)
+        valid_++;
+    else
+        invalid_++;
+
+    return result;
+}

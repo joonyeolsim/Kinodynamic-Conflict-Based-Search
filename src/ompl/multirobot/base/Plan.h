@@ -106,9 +106,6 @@ namespace ompl
             protected:
                 /** \brief The multi-agent space information this plan is part of */
                 SpaceInformationPtr si_;
-
-                /** \brief The individual paths that make up the multi-agent plan */
-                std::vector<ompl::base::PathPtr> paths_;
             };
         }
     }

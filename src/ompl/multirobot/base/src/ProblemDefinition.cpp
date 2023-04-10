@@ -38,24 +38,77 @@
 #include "ompl/base/goals/GoalState.h"
 
 
+bool ompl::multirobot::base::PlannerSolution::operator<(const PlannerSolution &b) const
+{
+    if (!approximate_ && b.approximate_)
+        return true;
+    if (approximate_ && !b.approximate_)
+        return false;
+    if (approximate_ && b.approximate_)
+        return difference_ < b.difference_;
+    // if (optimized_ && !b.optimized_)
+    //     return true;
+    // if (!optimized_ && b.optimized_)
+    //     return false;
+    return length_ < b.length_;
+}
+
 ompl::multirobot::base::ProblemDefinition::ProblemDefinition(SpaceInformationPtr si): 
     si_(std::move(si)), solutions_(std::make_shared<PlannerSolutionSet>())
 {
 }
 
-void ompl::multirobot::base::ProblemDefinition::setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::State *start, 
-        const ompl::base::State *goal, double threshold)
+unsigned int ompl::multirobot::base::ProblemDefinition::getIndividualCount() const
 {
-    clearStartStatesAtIndex(index);
-    addStartStateAtIndex(index, start);
-    setGoalStateAtIndex(index, goal, threshold);
+    return individualCount_;
 }
 
-void ompl::multirobot::base::ProblemDefinition::setGoalStateAtIndex(unsigned int index, const ompl::base::State *goal, double threshold)
+const ompl::base::ProblemDefinitionPtr &ompl::multirobot::base::ProblemDefinition::getIndividual(const unsigned int index) const
 {
-    clearGoalAtIndex(index);
-    auto gs(std::make_shared<ompl::base::GoalState>(si_->getIndividual(index)));
-    gs->setState(goal);
-    gs->setThreshold(threshold);
-    setGoalAtIndex(index, gs);
+    if (individualCount_ > index)
+        return individuals_[index];
+    else
+        throw Exception("Subspace index does not exist");
 }
+
+void ompl::multirobot::base::ProblemDefinition::addIndividual(const ompl::base::ProblemDefinitionPtr &individual)
+{
+    if (locked_)
+        throw Exception("ProblemDefinition is locked and unable to add another individual");
+    individuals_.push_back(individual);
+    individualCount_ = individuals_.size();
+}
+
+void ompl::multirobot::base::ProblemDefinition::addSolutionPlan(const PlanPtr &path, bool approximate, double difference,
+                                     const std::string &plannerName) const
+{
+    PlannerSolution sol(path);
+    if (approximate)
+        sol.setApproximate(difference);
+    sol.setPlannerName(plannerName);
+    addSolutionPlan(sol);
+}
+
+void ompl::multirobot::base::ProblemDefinition::addSolutionPlan(const PlannerSolution &sol) const
+{
+    if (sol.approximate_)
+        OMPL_INFORM("ProblemDefinition: Adding approximate solution from planner %s", sol.plannerName_.c_str());
+    solutions_->add(sol);
+}
+
+// void ompl::multirobot::base::ProblemDefinition::setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::State *start, 
+//         const ompl::base::State *goal, double threshold)
+// {
+//     clearStartStatesAtIndex(index);
+//     addStartStateAtIndex(index, start);
+//     setGoalStateAtIndex(index, goal, threshold);
+// }
+
+// void ompl::multirobot::base::ProblemDefinition::setGoalStateAtIndex(unsigned int index, const ompl::base::State *goal, double threshold)
+// {
+//     clearGoalAtIndex(index);
+//     auto gs(std::make_shared<ompl::base::GoalState>(si_->getIndividual(index)));
+//     gs->setState(goal);
+//     gs->setThreshold(threshold);
+//     setGoalAtIndex(index, gs);
+// }

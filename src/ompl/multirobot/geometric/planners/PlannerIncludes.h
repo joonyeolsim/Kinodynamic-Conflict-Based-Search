@@ -34,37 +34,11 @@
 
 /* Author: Justin Kottinger */
 
+#ifndef OMPL_MULTIROBOT_GEOMETRIC_PLANNERS_PLANNER_INCLUDES_
+#define OMPL_MULTIROBOT_GEOMETRIC_PLANNERS_PLANNER_INCLUDES_
+
+#include "ompl/multirobot/base/Planner.h"
 #include "ompl/multirobot/base/SpaceInformation.h"
+#include "ompl/multirobot/geometric/PlanGeometric.h"
 
-
-ompl::multirobot::base::SpaceInformation::SpaceInformation(): locked_(false), setup_(false)
-{
-}
-
-unsigned int ompl::multirobot::base::SpaceInformation::getIndividualCount() const
-{
-    return individualCount_;
-}
-
-const ompl::base::SpaceInformationPtr &ompl::multirobot::base::SpaceInformation::getIndividual(const unsigned int index) const
-{
-    if (individualCount_ > index)
-        return individuals_[index];
-    else
-        throw Exception("Subspace index does not exist");
-}
-
-void ompl::multirobot::base::SpaceInformation::addIndividual(const ompl::base::SpaceInformationPtr &individual)
-{
-    if (locked_)
-        throw Exception("SpaceInformation is locked and unable to add another individual");
-    individuals_.push_back(individual);
-    individualCount_ = individuals_.size();
-}
-
-void ompl::multirobot::base::SpaceInformation::setup()
-{
-    for (unsigned int i = 0; i < individualCount_; ++i)
-        individuals_[i]->setup();
-    setup_ = true;
-}
+#endif

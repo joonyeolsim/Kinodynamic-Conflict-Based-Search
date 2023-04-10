@@ -1,7 +1,7 @@
 /*********************************************************************
 * Software License Agreement (BSD License)
 *
-*  Copyright (c) 2010, Rice University
+*  Copyright (c) 2008, Willow Garage, Inc.
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
 *     copyright notice, this list of conditions and the following
 *     disclaimer in the documentation and/or other materials provided
 *     with the distribution.
-*   * Neither the name of the Rice University nor the names of its
+*   * Neither the name of the Willow Garage nor the names of its
 *     contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
 *
@@ -32,39 +32,51 @@
 *  POSSIBILITY OF SUCH DAMAGE.
 *********************************************************************/
 
-/* Author: Justin Kottinger */
+/* Author: Ioan Sucan */
 
-#include "ompl/multirobot/base/SpaceInformation.h"
+#include "ompl/multirobot/geometric/PlanGeometric.h"
+// #include "ompl/base/samplers/UniformValidStateSampler.h"
+// #include "ompl/base/OptimizationObjective.h"
+// #include "ompl/base/ScopedState.h"
+// #include <algorithm>
+// #include <cmath>
+// #include <limits>
+// #include <boost/math/constants/constants.hpp>
 
-
-ompl::multirobot::base::SpaceInformation::SpaceInformation(): locked_(false), setup_(false)
+ompl::multirobot::geometric::PlanGeometric::PlanGeometric(const PlanGeometric &plan) : ompl::multirobot::base::Plan(plan.si_)
 {
+    copyFrom(plan);
 }
 
-unsigned int ompl::multirobot::base::SpaceInformation::getIndividualCount() const
+void ompl::multirobot::geometric::PlanGeometric::copyFrom(const PlanGeometric &other)
 {
-    return individualCount_;
+    paths_.resize(other.paths_.size());
+    for (unsigned int i = 0; i < paths_.size(); ++i)
+    {
+        paths_[i] = std::make_shared<ompl::geometric::PathGeometric>(*other.paths_[i]);
+    }
 }
 
-const ompl::base::SpaceInformationPtr &ompl::multirobot::base::SpaceInformation::getIndividual(const unsigned int index) const
+void ompl::multirobot::geometric::PlanGeometric::append(const ompl::geometric::PathGeometricPtr &path)
 {
-    if (individualCount_ > index)
-        return individuals_[index];
-    else
-        throw Exception("Subspace index does not exist");
+    paths_.push_back(std::make_shared<ompl::geometric::PathGeometric>(*path));
 }
 
-void ompl::multirobot::base::SpaceInformation::addIndividual(const ompl::base::SpaceInformationPtr &individual)
+double ompl::multirobot::geometric::PlanGeometric::length() const
 {
-    if (locked_)
-        throw Exception("SpaceInformation is locked and unable to add another individual");
-    individuals_.push_back(individual);
-    individualCount_ = individuals_.size();
+    double L = 0.0;
+    for (unsigned int i = 1; i < paths_.size(); ++i)
+        L += paths_[i]->length();
+    return L;   
 }
 
-void ompl::multirobot::base::SpaceInformation::setup()
-{
-    for (unsigned int i = 0; i < individualCount_; ++i)
-        individuals_[i]->setup();
-    setup_ = true;
-}
+
+
+
+
+
+
+
+
+
+

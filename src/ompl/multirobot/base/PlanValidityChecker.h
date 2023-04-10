@@ -1,7 +1,7 @@
 /*********************************************************************
 * Software License Agreement (BSD License)
 *
-*  Copyright (c) 2010, Rice University
+*  Copyright (c) 2008, Willow Garage, Inc.
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
 *     copyright notice, this list of conditions and the following
 *     disclaimer in the documentation and/or other materials provided
 *     with the distribution.
-*   * Neither the name of the Rice University nor the names of its
+*   * Neither the name of the Willow Garage nor the names of its
 *     contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
 *
@@ -34,37 +34,45 @@
 
 /* Author: Justin Kottinger */
 
-#include "ompl/multirobot/base/SpaceInformation.h"
+#ifndef OMPL_MULTIROBOT_BASE_PLAN_VALIDITY_CHECKER_
+#define OMPL_MULTIROBOT_BASE_PLAN_VALIDITY_CHECKER_
 
+#include "ompl/multirobot/base/Plan.h"
+#include "ompl/util/ClassForward.h"
 
-ompl::multirobot::base::SpaceInformation::SpaceInformation(): locked_(false), setup_(false)
+namespace ompl
 {
+    namespace multirobot
+    {
+        namespace base
+        {
+            /// @cond IGNORE
+            OMPL_CLASS_FORWARD(SpaceInformation);
+            /// @endcond
+
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::multirobot::base::StateValidityChecker */
+            OMPL_CLASS_FORWARD(PlanValidityChecker);
+            /// @endcond
+
+            class PlanValidityChecker
+            {
+            public:
+                /** \brief Constructor */
+                PlanValidityChecker(const SpaceInformationPtr &si) : si_(si.get())
+                {
+                }
+
+                /** \brief Return true if the \e plan is valid. Usually, this means at least collision checking. */
+                virtual bool isValid(const PlanPtr &plan) const = 0;
+
+            protected:
+                /** \brief The instance of space information this state validity checker operates on */
+                SpaceInformation *si_;
+
+            };
+        }
+    }
 }
 
-unsigned int ompl::multirobot::base::SpaceInformation::getIndividualCount() const
-{
-    return individualCount_;
-}
-
-const ompl::base::SpaceInformationPtr &ompl::multirobot::base::SpaceInformation::getIndividual(const unsigned int index) const
-{
-    if (individualCount_ > index)
-        return individuals_[index];
-    else
-        throw Exception("Subspace index does not exist");
-}
-
-void ompl::multirobot::base::SpaceInformation::addIndividual(const ompl::base::SpaceInformationPtr &individual)
-{
-    if (locked_)
-        throw Exception("SpaceInformation is locked and unable to add another individual");
-    individuals_.push_back(individual);
-    individualCount_ = individuals_.size();
-}
-
-void ompl::multirobot::base::SpaceInformation::setup()
-{
-    for (unsigned int i = 0; i < individualCount_; ++i)
-        individuals_[i]->setup();
-    setup_ = true;
-}
+#endif

@@ -52,7 +52,8 @@ if (OMPL_BUILD_DEMOS)
     add_ompl_demo(demo_MultiLevelPlanningHyperCube multilevel/MultiLevelPlanningHyperCube.cpp)
     add_ompl_demo(demo_MultiLevelPlanningHyperCubeBenchmark multilevel/MultiLevelPlanningHyperCubeBenchmark.cpp)
 
-    add_ompl_demo(demo_MultiRobotPlanning multirobot/MultiRobotPlanning.cpp)
+    add_ompl_demo(demo_MultiRobotRigidBodyPlanning multirobot/MultiRobotRigidBodyPlanning.cpp)
+    add_ompl_demo(demo_MultiRobotRigidBodyPlanningWithControls multirobot/MultiRobotRigidBodyPlanningWithControls.cpp)
 
     add_ompl_demo(demo_SpaceTimePlanning SpaceTimePlanning.cpp)
 

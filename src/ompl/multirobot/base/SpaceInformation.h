@@ -37,6 +37,7 @@
 #ifndef OMPL_MULTIROBOT_SPACE_INFORMATION_
 #define OMPL_MULTIROBOT_SPACE_INFORMATION_
 
+#include "ompl/base/StateValidityChecker.h"
 #include "ompl/base/SpaceInformation.h"
 
 namespace ompl
@@ -45,6 +46,11 @@ namespace ompl
     {
         namespace base
         {
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::base::SpaceInformation */
+            OMPL_CLASS_FORWARD(SpaceInformation);
+            /// @endcond
+
             class SpaceInformation
             {
             public:
@@ -73,11 +79,26 @@ namespace ompl
                 /** \brief Adds an individual as part of the multi-agent state space. */
                 void addIndividual(const ompl::base::SpaceInformationPtr &individual);
 
+                /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
+                void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time)
+                {
+                    individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
+                } 
+
                 /** \brief Get a specific subspace from the compound state space */
                 const ompl::base::SpaceInformationPtr &getIndividual(unsigned int index) const;
 
                 /** \brief Get the number of individuals that make up the multi-agent state space */
                 unsigned int getIndividualCount() const;
+
+                /** \brief Assures that all of the individual state spaces are setup */
+                void setup();
+
+                /** \brief Returns true if setup() has been called */
+                bool isSetup()
+                {
+                    return setup_;
+                }
 
                 void lock()
                 {
@@ -93,6 +114,9 @@ namespace ompl
 
                 /** \brief Boolean that indicates that there are no additional individuals to add */
                 bool locked_;
+
+                /** \brief Flag that notifies the user if all individual's are set-up for planning */
+                bool setup_;
             };
         }
     }

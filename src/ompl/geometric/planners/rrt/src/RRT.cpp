@@ -145,7 +145,7 @@ ompl::base::PlannerStatus ompl::geometric::RRT::solve(const base::PlannerTermina
             dstate = xstate;
         }
 
-        if (si_->checkMotion(nmotion->state, dstate))
+        if (si_->checkMotionTest(nmotion->state, dstate, nmotion->step))
         {
             if (addIntermediateStates_)
             {
@@ -160,6 +160,7 @@ ompl::base::PlannerStatus ompl::geometric::RRT::solve(const base::PlannerTermina
                     auto *motion = new Motion;
                     motion->state = states[i];
                     motion->parent = nmotion;
+                    motion->step = nmotion->step + 1;
                     nn_->add(motion);
 
                     nmotion = motion;
@@ -170,6 +171,7 @@ ompl::base::PlannerStatus ompl::geometric::RRT::solve(const base::PlannerTermina
                 auto *motion = new Motion(si_);
                 si_->copyState(motion->state, dstate);
                 motion->parent = nmotion;
+                motion->step = nmotion->step + 1;
                 nn_->add(motion);
 
                 nmotion = motion;
