@@ -137,8 +137,16 @@ ompl::base::PlannerStatus ompl::control::RRT::solve(const base::PlannerTerminati
         /* find closest state in the tree */
         Motion *nmotion = nn_->nearest(rmotion);
 
+        /* get time of nmotion */
+        unsigned int nsteps = 0;
+        Motion* nmotionCpy = nmotion;
+        while (nmotionCpy)
+        {
+            nsteps += nmotionCpy->steps;
+            nmotionCpy = nmotionCpy->parent;
+        }
         /* sample a random control that attempts to go towards the random state, and also sample a control duration */
-        unsigned int cd = controlSampler_->sampleTo(rctrl, nmotion->control, nmotion->state, rmotion->state);
+        unsigned int cd = controlSampler_->sampleToTest(rctrl, nmotion->control, nmotion->state, rmotion->state, nsteps);
 
         if (addIntermediateStates_)
         {

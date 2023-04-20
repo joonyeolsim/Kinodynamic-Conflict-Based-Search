@@ -43,6 +43,8 @@
 #include <unordered_map>
 #include <vector>
 #include <limits>
+#include <cmath>
+#include <iostream>
 
 namespace ompl
 {
@@ -131,8 +133,8 @@ namespace ompl
                 {
                     if (isValid(state))
                     {
-                        // state is valid, test against dynamic obstacles
-                        auto obsAtTime = dynObstacles_.find(time);
+                        int t_key = std::round(time * scalingFactor_);
+                        auto obsAtTime = dynObstacles_.find(t_key);
                         if (obsAtTime != dynObstacles_.end())
                         {
                             for (auto st = obsAtTime->second.begin(); st != obsAtTime->second.end(); st++)
@@ -141,7 +143,6 @@ namespace ompl
                                     return false;
                             }
                             return true;
-                            // return areStatesValid(state, st);
                         }
                         else
                             return true;
@@ -157,9 +158,16 @@ namespace ompl
             }
 
             /** \brief Add a dynamic obstacle */
-            void addDynamicObstacle(const double key, const SpaceInformationPtr si, const State* state)
+            void addDynamicObstacle(const double time, const SpaceInformationPtr &si, const State* state)
             {
+                int key = std::round(time * scalingFactor_);
                 dynObstacles_[key].push_back(std::make_pair(si, state));
+            }
+
+            /** \brief clear the dynamicObstacle map */
+            void clearDynamicObstacles()
+            {
+                dynObstacles_.clear();
             }
 
             /** \brief Return true if the state \e state is valid. In addition, set \e dist to the distance to the
@@ -208,7 +216,6 @@ namespace ompl
               return !(*this == rhs);
             }
 
-
         protected:
             /** \brief The instance of space information this state validity checker operates on */
             SpaceInformation *si_;
@@ -217,7 +224,10 @@ namespace ompl
             StateValidityCheckerSpecs specs_;
 
             /** \brief A hash table that maps time steps (keys) to the values (states) that must be accounted for inside isValid() */
-            std::unordered_map<double, std::vector<std::pair<const SpaceInformationPtr,const State*>> > dynObstacles_;
+            std::unordered_map<int, std::vector<std::pair<const SpaceInformationPtr,const State*>> > dynObstacles_;
+
+            /** the scaling factor for dynamic obstacles, this will work in most */
+            int scalingFactor_ = 1e5;
         };
 
         /** \brief The simplest state validity checker: all states are valid */

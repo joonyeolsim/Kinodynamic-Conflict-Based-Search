@@ -222,6 +222,65 @@ unsigned int ompl::control::SpaceInformation::propagateWhileValid(const base::St
     return 0;
 }
 
+unsigned int ompl::control::SpaceInformation::propagateWhileValidTest(const base::State *state, const Control *control,
+                                                                  int steps, base::State *result, unsigned int previousSteps) const
+{
+    double time = stepSize_ * previousSteps;
+
+    if (steps == 0)
+    {
+        if (result != state)
+            copyState(result, state);
+        return 0;
+    }
+
+    double signedStepSize = steps > 0 ? stepSize_ : -stepSize_;
+    steps = abs(steps);
+
+    // perform the first step of propagation
+    statePropagator_->propagate(state, control, signedStepSize, result);
+    time += stepSize_;
+
+    // if we found a valid state after one step, we can go on
+    if (isValid(result, time))
+    {
+        base::State *temp1 = result;
+        base::State *temp2 = allocState();
+        base::State *toDelete = temp2;
+        unsigned int r = steps;
+
+        // for the remaining number of steps
+        for (int i = 1; i < steps; ++i)
+        {
+            statePropagator_->propagate(temp1, control, signedStepSize, temp2);
+            time += stepSize_;
+            if (isValid(temp2, time))
+                std::swap(temp1, temp2);
+            else
+            {
+                // the last valid state is temp1;
+                r = i;
+                break;
+            }
+        }
+
+        // if we finished the for-loop without finding an invalid state, the last valid state is temp1
+        // make sure result contains that information
+        if (result != temp1)
+            copyState(result, temp1);
+
+        // free the temporary memory
+        freeState(toDelete);
+
+        return r;
+    }
+    // if the first propagation step produced an invalid step, return 0 steps
+    // the last valid state is the starting one (assumed to be valid)
+    if (result != state)
+        copyState(result, state);
+    return 0;
+}
+
 void ompl::control::SpaceInformation::propagate(const base::State *state, const Control *control, int steps,
                                                 std::vector<base::State *> &result, bool alloc) const
 {

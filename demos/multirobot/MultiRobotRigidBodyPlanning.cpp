@@ -37,7 +37,6 @@
 #include <ompl/multirobot/base/SpaceInformation.h>
 #include <ompl/multirobot/base/ProblemDefinition.h>
 #include <ompl/multirobot/base/PlanValidityChecker.h>
-#include <ompl/multirobot/geometric/PlanGeometric.h>
 #include <ompl/multirobot/geometric/planners/pp/PP.h>
 
 #include <ompl/base/spaces/SE3StateSpace.h>

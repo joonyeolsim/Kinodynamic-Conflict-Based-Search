@@ -34,36 +34,42 @@
 
 /* Author: Justin Kottinger */
 
-#include "ompl/multirobot/geometric/PlanGeometric.h"
+#include "ompl/multirobot/control/PlanControl.h"
 
-ompl::multirobot::geometric::PlanGeometric::PlanGeometric(const PlanGeometric &plan) : ompl::multirobot::base::Plan(plan.si_)
+ompl::multirobot::control::PlanControl::PlanControl(const ompl::multirobot::base::SpaceInformationPtr &si) : ompl::multirobot::base::Plan(si)
+{
+    if (dynamic_cast<const SpaceInformation *>(si_.get()) == nullptr)
+        throw Exception("Cannot create a plan with controls from a space that does not support controls");
+}
+
+ompl::multirobot::control::PlanControl::PlanControl(const PlanControl &plan) : ompl::multirobot::base::Plan(plan.si_)
 {
     copyFrom(plan);
 }
 
-void ompl::multirobot::geometric::PlanGeometric::copyFrom(const PlanGeometric &other)
+void ompl::multirobot::control::PlanControl::copyFrom(const PlanControl &other)
 {
     paths_.resize(other.paths_.size());
     for (unsigned int i = 0; i < paths_.size(); ++i)
     {
-        paths_[i] = std::make_shared<ompl::geometric::PathGeometric>(*other.paths_[i]);
+        paths_[i] = std::make_shared<ompl::control::PathControl>(*other.paths_[i]);
     }
 }
 
-void ompl::multirobot::geometric::PlanGeometric::append(const ompl::geometric::PathGeometricPtr &path)
+void ompl::multirobot::control::PlanControl::append(const ompl::control::PathControlPtr &path)
 {
-    paths_.push_back(std::make_shared<ompl::geometric::PathGeometric>(*path));
+    paths_.push_back(std::make_shared<ompl::control::PathControl>(*path));
 }
 
-double ompl::multirobot::geometric::PlanGeometric::length() const
+double ompl::multirobot::control::PlanControl::length() const
 {
     double L = 0.0;
-    for (unsigned int i = 0; i < paths_.size(); ++i)
+    for (unsigned int i = 1; i < paths_.size(); ++i)
         L += paths_[i]->length();
     return L;   
 }
 
-void ompl::multirobot::geometric::PlanGeometric::print(std::ostream &out, std::string prefix) const
+void ompl::multirobot::control::PlanControl::print(std::ostream &out, std::string prefix) const
 {
     for (unsigned int i = 0; i < paths_.size(); ++i)
     {
@@ -72,7 +78,7 @@ void ompl::multirobot::geometric::PlanGeometric::print(std::ostream &out, std::s
     }
 }
 
-void ompl::multirobot::geometric::PlanGeometric::printAsMatrix(std::ostream &out, std::string prefix) const
+void ompl::multirobot::control::PlanControl::printAsMatrix(std::ostream &out, std::string prefix) const
 {
     for (unsigned int i = 0; i < paths_.size(); ++i)
     {

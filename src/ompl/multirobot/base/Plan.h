@@ -100,8 +100,8 @@ namespace ompl
                 // /** \brief Check if the path is valid */
                 // virtual bool check() const = 0;
 
-                // /** \brief Print the path to a stream */
-                // virtual void print(std::ostream &out) const = 0;
+                /** \brief Print the path to a stream */
+                virtual void print(std::ostream &out, std::string prefix) const = 0;
 
             protected:
                 /** \brief The multi-agent space information this plan is part of */

@@ -51,7 +51,6 @@
 #include <utility>
 #include <cstdlib>
 #include <vector>
-#include <iostream>
 
 /** \brief Main namespace. Contains everything in this library */
 namespace ompl
@@ -106,6 +105,12 @@ namespace ompl
             void addDynamicObstacle(const double time, const SpaceInformationPtr si, const State* state)
             {
                 stateValidityChecker_->addDynamicObstacle(time, si, state);
+            }
+
+            /** \brief clear the dynamicObstacle map */
+            void clearDynamicObstacles()
+            {
+                stateValidityChecker_->clearDynamicObstacles();
             }
 
             /** \brief Return the instance of the used state space */

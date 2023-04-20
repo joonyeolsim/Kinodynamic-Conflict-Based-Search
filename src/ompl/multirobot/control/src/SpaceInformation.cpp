@@ -34,19 +34,19 @@
 
 /* Author: Justin Kottinger */
 
-#include "ompl/multirobot/base/SpaceInformation.h"
+#include "ompl/multirobot/control/SpaceInformation.h"
 
 
-ompl::multirobot::base::SpaceInformation::SpaceInformation(): locked_(false), setup_(false)
+ompl::multirobot::control::SpaceInformation::SpaceInformation(): ompl::multirobot::base::SpaceInformation()
 {
 }
 
-unsigned int ompl::multirobot::base::SpaceInformation::getIndividualCount() const
-{
-    return individualCount_;
-}
+// unsigned int ompl::multirobot::control::SpaceInformation::getIndividualCount() const
+// {
+//     return individualCount_;
+// }
 
-const ompl::base::SpaceInformationPtr &ompl::multirobot::base::SpaceInformation::getIndividual(const unsigned int index) const
+const ompl::control::SpaceInformationPtr &ompl::multirobot::control::SpaceInformation::getIndividual(const unsigned int index) const
 {
     if (individualCount_ > index)
         return individuals_[index];
@@ -54,7 +54,7 @@ const ompl::base::SpaceInformationPtr &ompl::multirobot::base::SpaceInformation:
         throw Exception("Subspace index does not exist");
 }
 
-void ompl::multirobot::base::SpaceInformation::addIndividual(const ompl::base::SpaceInformationPtr &individual)
+void ompl::multirobot::control::SpaceInformation::addIndividual(const ompl::control::SpaceInformationPtr &individual)
 {
     if (locked_)
         throw Exception("SpaceInformation is locked and unable to add another individual");
@@ -62,9 +62,8 @@ void ompl::multirobot::base::SpaceInformation::addIndividual(const ompl::base::S
     individualCount_ = individuals_.size();
 }
 
-void ompl::multirobot::base::SpaceInformation::setup()
+void ompl::multirobot::control::SpaceInformation::setup()
 {
-    std::cout << "in setup" << std::endl;
     for (unsigned int i = 0; i < individualCount_; ++i)
         individuals_[i]->setup();
     setup_ = true;

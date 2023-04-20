@@ -34,24 +34,24 @@
 
 /* Author: Justin Kottinger */
 
-#ifndef OMPL_MULTIROBOT_SPACE_INFORMATION_
-#define OMPL_MULTIROBOT_SPACE_INFORMATION_
+#ifndef OMPL_MULTIROBOT_CONTROL_SPACE_INFORMATION_
+#define OMPL_MULTIROBOT_CONTROL_SPACE_INFORMATION_
 
-#include "ompl/base/SpaceInformation.h"
-#include "ompl/multirobot/base/PlanValidityChecker.h"
+#include "ompl/multirobot/base/SpaceInformation.h"
+#include "ompl/control/SpaceInformation.h"
 
 namespace ompl
 {
     namespace multirobot
     {
-        namespace base
+        namespace control
         {
             /// @cond IGNORE
             /** \brief Forward declaration of ompl::base::SpaceInformation */
             OMPL_CLASS_FORWARD(SpaceInformation);
             /// @endcond
 
-            class SpaceInformation
+            class SpaceInformation : public ompl::multirobot::base::SpaceInformation
             {
             public:
                 // non-copyable
@@ -62,86 +62,27 @@ namespace ompl
                 SpaceInformation();
 
                 /** \brief Construct a multi-agent space information from a list of indivudal space informations */
-                SpaceInformation(const std::vector<ompl::base::SpaceInformation> &individuals);
+                SpaceInformation(const std::vector<ompl::control::SpaceInformation> &individuals);
 
                 virtual ~SpaceInformation() = default;
 
-                /** \brief Cast this instance to a desired type. */
-                template <class T>
-                const T *as() const
-                {
-                    /** \brief Make sure the type we are allocating is indeed a Plan */
-                    BOOST_CONCEPT_ASSERT((boost::Convertible<T *, SpaceInformation *>));
-
-                    return static_cast<const T *>(this);
-                }
-
-                /** \brief Cast this instance to a desired type. */
-                template <class T>
-                T *as()
-                {
-                    /** \brief Make sure the type we are allocating is indeed a Plan */
-                    BOOST_CONCEPT_ASSERT((boost::Convertible<T *, SpaceInformation *>));
-
-                    return static_cast<T *>(this);
-                }
-
                 /** \brief Adds an individual as part of the multi-agent state space. */
-                void addIndividual(const ompl::base::SpaceInformationPtr &individual);
-
-                /** \brief Set the instance of the plan validity checker to use. */
-                void setPlanValidityChecker(const PlanValidityCheckerPtr &svc)
-                {
-                    planValidityChecker_ = svc;
-                    setup_ = false;
-                }
-
-                bool isPlanValid(const PlanPtr &plan) const
-                {
-                    return planValidityChecker_->isValid(plan);
-                }
+                void addIndividual(const ompl::control::SpaceInformationPtr &individual);
 
                 /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
-                virtual void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const
+                void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const override
                 {
                     individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
-                }
+                } 
 
                 /** \brief Get a specific subspace from the compound state space */
-                const ompl::base::SpaceInformationPtr &getIndividual(unsigned int index) const;
+                const ompl::control::SpaceInformationPtr &getIndividual(unsigned int index) const;
 
-                /** \brief Get the number of individuals that make up the multi-agent state space */
-                unsigned int getIndividualCount() const;
-
-                /** \brief Assures that all of the individual state spaces are setup */
-                virtual void setup();
-
-                /** \brief Returns true if setup() has been called */
-                bool isSetup()
-                {
-                    return setup_;
-                }
-
-                void lock()
-                {
-                    locked_ = true;
-                }
+                virtual void setup() override;
 
             protected:
                 /** \brief The individual space informations that make up the multi-agent state space */
-                std::vector<ompl::base::SpaceInformationPtr> individuals_;
-
-                /** \brief An instance of the plan validity checker */
-                PlanValidityCheckerPtr planValidityChecker_{nullptr};
-
-                /** \brief The number of indivudals in the multi-agent state space */
-                unsigned int individualCount_{0u};
-
-                /** \brief Boolean that indicates that there are no additional individuals to add */
-                bool locked_;
-
-                /** \brief Flag that notifies the user if all individual's are set-up for planning */
-                bool setup_;
+                std::vector<ompl::control::SpaceInformationPtr> individuals_;
             };
         }
     }

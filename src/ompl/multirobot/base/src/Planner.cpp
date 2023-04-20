@@ -97,11 +97,8 @@ void ompl::multirobot::base::Planner::setup()
         OMPL_INFORM("%s: Space information setup was not yet called. Calling now.", getName().c_str());
         si_->setup();
     }
-
-    if (setup_)
+    else if (setup_)
         OMPL_WARN("%s: Planner setup called multiple times", getName().c_str());
-    else
-        setup_ = true;
 }
 
 void ompl::multirobot::base::Planner::checkValidity()

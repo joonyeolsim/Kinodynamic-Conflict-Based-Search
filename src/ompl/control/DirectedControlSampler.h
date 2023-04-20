@@ -82,6 +82,8 @@ namespace ompl
                 control and duration. The motion is checked for validity. */
             virtual unsigned int sampleTo(Control *control, const base::State *source, base::State *dest) = 0;
 
+            virtual unsigned int sampleToTest(Control *control, const base::State *source, base::State *dest, unsigned int previousSteps) = 0;
+
             /** \brief Sample a control given that it will be applied to state
                 \e state and the intention is to reach state \e dest. Also take
                 into account the fact that the previously applied control is \e
@@ -93,6 +95,10 @@ namespace ompl
                 checked for validity. */
             virtual unsigned int sampleTo(Control *control, const Control *previous, const base::State *source,
                                           base::State *dest) = 0;
+
+            /* test function for planning with dynamic obstacles */
+            virtual unsigned int sampleToTest(Control *control, const Control *previous, const base::State *source,
+                                          base::State *dest, unsigned int previousSteps) = 0;
 
         protected:
             /** \brief The space information this sampler operates on */

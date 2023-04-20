@@ -34,13 +34,14 @@
 
 /* Author: Justin Kottinger */
 
-#include "ompl/multirobot/geometric/planners/pp/PP.h"
-#include "ompl/geometric/planners/rrt/RRT.h"
+#include "ompl/multirobot/control/planners/pp/PP.h"
+#include "ompl/control/planners/rrt/RRT.h"
 
 
-ompl::multirobot::geometric::PP::PP(const ompl::multirobot::base::SpaceInformationPtr &si, ompl::base::PlannerPtr solver)
+ompl::multirobot::control::PP::PP(const ompl::multirobot::control::SpaceInformationPtr &si, ompl::base::PlannerPtr solver)
   : ompl::multirobot::base::Planner(si, "PP"), solver_(solver)
 {
+    siC_ = si.get();
     // specs_.approximateSolutions = true;
     // specs_.directed = true;
 
@@ -52,31 +53,31 @@ ompl::multirobot::geometric::PP::PP(const ompl::multirobot::base::SpaceInformati
     // addIntermediateStates_ = addIntermediateStates;
 }
 
-ompl::multirobot::geometric::PP::~PP()
+ompl::multirobot::control::PP::~PP()
 {
     freeMemory();
 }
 
-void ompl::multirobot::geometric::PP::clear()
+void ompl::multirobot::control::PP::clear()
 {
-    Planner::clear();
+    base::Planner::clear();
     freeMemory();
 }
 
-void ompl::multirobot::geometric::PP::setup()
+void ompl::multirobot::control::PP::setup()
 {
-    Planner::setup();
+    base::Planner::setup();
     // if (!solver_)
     // {
     //     OMPL_WARN("%s: No solver provided... Using RRT", getName().c_str());
     //     std::cout << si_->getIndividual(0) << std::endl;
     //     std::cout << pdef_->getIndividualCount() << std::endl;
-    //     solver_ = std::make_shared<ompl::geometric::RRT>(si_->getIndividual(0));
+    //     solver_ = std::make_shared<ompl::control::RRT>(si_->getIndividual(0));
     //     solver_->setProblemDefinition(pdef_->getIndividual(0));
     // }
 }
 
-void ompl::multirobot::geometric::PP::freeMemory()
+void ompl::multirobot::control::PP::freeMemory()
 {
     if (solver_)
     {
@@ -85,35 +86,41 @@ void ompl::multirobot::geometric::PP::freeMemory()
     }
 }
 
-void ompl::multirobot::geometric::PP::addPathAsDynamicObstacles(const unsigned int individual, const ompl::geometric::PathGeometricPtr path)
+void ompl::multirobot::control::PP::addPathAsDynamicObstacles(const unsigned int individual, const ompl::control::PathControlPtr &path)
 {
-    for (unsigned int r = individual + 1; r < si_->getIndividualCount(); r++)
+    path->interpolate();
+    auto states = path->getStates();
+    auto durs = path->getControlDurations();
+    for (auto r = individual + 1; r < si_->getIndividualCount(); r++)
     {
-        for (unsigned int t = 0; t < path->getStates().size(); t++)
+        double time = 0.;
+        for (unsigned int step = 0; step < path->getStateCount(); step++)
         {
-            si_->addDynamicObstacleForIndividual(r, individual, path->getState(t), (double)t);
+            auto state =  siC_->getIndividual(individual)->cloneState(states[step]);
+            si_->addDynamicObstacleForIndividual(r, individual, state, time);
+            time += durs[step];
         }
     }
 }
 
-ompl::base::PlannerStatus ompl::multirobot::geometric::PP::solve(const ompl::base::PlannerTerminationCondition &ptc)
+ompl::base::PlannerStatus ompl::multirobot::control::PP::solve(const ompl::base::PlannerTerminationCondition &ptc)
 {
     checkValidity();
-    auto plan(std::make_shared<PlanGeometric>(si_));
+    auto plan(std::make_shared<PlanControl>(si_));
     for (unsigned int r = 0; r < si_->getIndividualCount(); ++r)
     {
         /* plan for individual r while treating individuals 1, ..., r-1 as dynamic obstacles 
-            Note: It is theoretically possible to use any planner from ompl::geometric. We only use RRT here for now.
+            Note: It is theoretically possible to use any planner from ompl::control. We only use RRT for now.
         */
-        solver_ = std::make_shared<ompl::geometric::RRT>(si_->getIndividual(r), true);
+        solver_ = std::make_shared<ompl::control::RRT>(siC_->getIndividual(r));
         solver_->setProblemDefinition(pdef_->getIndividual(r));
         bool solved = solver_->solve(ptc);
         if (solved)
         {
             // add the path to the plan
-            auto path = std::make_shared<ompl::geometric::PathGeometric>(*solver_->getProblemDefinition()->getSolutionPath()->as<ompl::geometric::PathGeometric>());
+            auto path = std::make_shared<ompl::control::PathControl>(*solver_->getProblemDefinition()->getSolutionPath()->as<ompl::control::PathControl>());
             addPathAsDynamicObstacles(r, path);
-            plan->append(path);
+            plan->as<PlanControl>()->append(path);
         }
         else
         {
@@ -130,7 +137,7 @@ ompl::base::PlannerStatus ompl::multirobot::geometric::PP::solve(const ompl::bas
     return {true, false};
 }
 
-void ompl::multirobot::geometric::PP::getPlannerData(ompl::base::PlannerData &data) const
+void ompl::multirobot::control::PP::getPlannerData(ompl::base::PlannerData &data) const
 {
     std::cout << "getPlannerData() called" << std::endl;
 }

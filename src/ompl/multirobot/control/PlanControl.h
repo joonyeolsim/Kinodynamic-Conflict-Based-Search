@@ -34,12 +34,12 @@
 
 /* Author: Justin Kottinger */
 
-#ifndef OMPL_MULTIROBOT_GEOMETRIC_PLAN_GEOMETRIC_
-#define OMPL_MULTIROBOT_GEOMETRIC_PLAN_GEOMETRIC_
+#ifndef OMPL_MULTIROBOT_CONTROL_PLAN_CONTROL_
+#define OMPL_MULTIROBOT_CONTROL_PLAN_CONTROL_
 
-#include "ompl/multirobot/base/SpaceInformation.h"
+#include "ompl/multirobot/control/SpaceInformation.h"
 #include "ompl/multirobot/base/Plan.h"
-#include "ompl/geometric/PathGeometric.h"
+#include "ompl/control/PathControl.h"
 #include <vector>
 #include <utility>
 
@@ -55,26 +55,24 @@ namespace ompl
         //     /// @endcond
         // }
 
-        namespace geometric
+        namespace control
         {
             /// @cond IGNORE
             /** \brief Forward declaration of ompl::geometric::PathGeometric */
-            OMPL_CLASS_FORWARD(PlanGeometric);
+            OMPL_CLASS_FORWARD(PlanControl);
             /// @endcond
 
             /** \brief Definition of a geometric path.
 
                 This is the type of path computed by geometric planners. */
-            class PlanGeometric : public base::Plan
+            class PlanControl : public base::Plan
             {
             public:
                 /** \brief Construct a path instance for a given space information */
-                PlanGeometric(const base::SpaceInformationPtr &si) : base::Plan(si)
-                {
-                }
+                PlanControl(const base::SpaceInformationPtr &si);
 
                 /** \brief Copy constructor */
-                PlanGeometric(const PlanGeometric &plan);
+                PlanControl(const PlanControl &plan);
 
                 // /** \brief Construct a path instance from a single state */
                 // PathGeometric(const base::SpaceInformationPtr &si, const base::State *state);
@@ -167,8 +165,13 @@ namespace ompl
                     used. */
                 void interpolate()
                 {
-                    for (auto &p: paths_)
+                    for (ompl::control::PathControlPtr &p: paths_)
                         p->interpolate();
+                }
+
+                ompl::control::PathControlPtr &getPath(unsigned int index)
+                {
+                    return paths_[index];
                 }
 
                 // /** \brief Add a state at the middle of each segment */
@@ -203,7 +206,7 @@ namespace ompl
                 // void overlay(const PathGeometric &over, unsigned int startIndex = 0);
 
                 /** \brief Append \e path to the end of this plan. The memory for \e path is copied. */
-                void append(const ompl::geometric::PathGeometricPtr &path);
+                void append(const ompl::control::PathControlPtr &path);
 
                 // /** \brief Append \e path at the end of this path. States from \e path are copied.
 
@@ -277,10 +280,10 @@ namespace ompl
                 // void freeMemory();
 
                 /** \brief Copy data to this path from another path instance */
-                void copyFrom(const PlanGeometric &other);
+                void copyFrom(const PlanControl &other);
 
                 /** \brief The individual paths that make up the multi-agent plan */
-                std::vector<ompl::geometric::PathGeometricPtr> paths_;
+                std::vector<ompl::control::PathControlPtr> paths_;
             };
         }
     }

@@ -89,6 +89,8 @@ namespace ompl
                 control and duration. The motion is checked for validity. */
             unsigned int sampleTo(Control *control, const base::State *source, base::State *dest) override;
 
+            unsigned int sampleToTest(Control *control, const base::State *source, base::State *dest, unsigned int previousSteps) override;
+
             /** \brief Sample a control given that it will be applied
                 to state \e state and the intention is to reach state
                 \e dest. Also take into account the fact that the
@@ -102,11 +104,18 @@ namespace ompl
             unsigned int sampleTo(Control *control, const Control *previous, const base::State *source,
                                   base::State *dest) override;
 
+            /* test function for planning with dynamic obstacles */
+            unsigned int sampleToTest(Control *control, const Control *previous, const base::State *source,
+                                          base::State *dest, unsigned int previousSteps) override;
+
         protected:
             /** \brief Samples \e numControlSamples_ controls, and returns the
                 control that brings the system the closest to \e target */
             virtual unsigned int getBestControl(Control *control, const base::State *source, base::State *dest,
                                                 const Control *previous);
+
+            virtual unsigned int getBestControlTest(Control *control, const base::State *source, base::State *dest,
+                                                const Control *previous, unsigned int previousSteps);
 
             /** \brief An instance of the control sampler*/
             ControlSamplerPtr cs_;

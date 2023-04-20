@@ -53,6 +53,11 @@ namespace ompl
 
     namespace control
     {
+        /// @cond IGNORE
+        /** \brief Forward declaration of ompl::geometric::PathGeometric */
+        OMPL_CLASS_FORWARD(PathControl);
+        /// @endcond
+        
         /** \brief Definition of a control path.
 
          This is the type of path produced when planning with

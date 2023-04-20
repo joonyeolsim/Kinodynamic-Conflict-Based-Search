@@ -38,12 +38,9 @@
 #ifndef OMPL_MULTIROBOT_PROBLEM_DEFINITION_
 #define OMPL_MULTIROBOT_PROBLEM_DEFINITION_
 
-// #include "ompl/base/State.h"
-// #include "ompl/base/Goal.h"
 #include <ompl/base/ProblemDefinition.h>
 #include "ompl/multirobot/base/Plan.h"
 #include "ompl/multirobot/base/SpaceInformation.h"
-// #include "ompl/base/ScopedState.h"
 #include <mutex>
 
 namespace ompl
@@ -372,11 +369,11 @@ namespace ompl
                 //  * objective) */
                 // bool hasOptimizedSolution() const;
 
-                // /** \brief Return the top solution path, if one is found. The top path is a shortest
-                //     path that was found, preference being given to solutions that are not approximate.
+                /** \brief Return the top solution path, if one is found. The top path is a shortest
+                    path that was found, preference being given to solutions that are not approximate.
 
-                //     This will need to be casted into the specialization computed by the planner */
-                // PathPtr getSolutionPath() const;
+                    This will need to be casted into the specialization computed by the planner */
+                PlanPtr getSolutionPlan() const;
 
                 // /** \brief Return true if a top solution is found, with the top solution passed by reference in the function
                 //    header

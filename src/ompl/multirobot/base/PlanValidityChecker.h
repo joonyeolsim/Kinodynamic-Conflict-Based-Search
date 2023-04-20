@@ -38,7 +38,6 @@
 #define OMPL_MULTIROBOT_BASE_PLAN_VALIDITY_CHECKER_
 
 #include "ompl/multirobot/base/Plan.h"
-#include "ompl/util/ClassForward.h"
 
 namespace ompl
 {
@@ -51,7 +50,11 @@ namespace ompl
             /// @endcond
 
             /// @cond IGNORE
-            /** \brief Forward declaration of ompl::multirobot::base::StateValidityChecker */
+            OMPL_CLASS_FORWARD(Plan);
+            /// @endcond
+
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::multirobot::base::PlanValidityChecker */
             OMPL_CLASS_FORWARD(PlanValidityChecker);
             /// @endcond
 
@@ -59,7 +62,7 @@ namespace ompl
             {
             public:
                 /** \brief Constructor */
-                PlanValidityChecker(const SpaceInformationPtr &si) : si_(si.get())
+                PlanValidityChecker(const SpaceInformationPtr &si) : si_(si)
                 {
                 }
 
@@ -68,7 +71,7 @@ namespace ompl
 
             protected:
                 /** \brief The instance of space information this state validity checker operates on */
-                SpaceInformation *si_;
+                const SpaceInformationPtr si_;
 
             };
         }

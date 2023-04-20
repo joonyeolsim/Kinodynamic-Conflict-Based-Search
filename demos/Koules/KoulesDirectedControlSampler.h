@@ -64,11 +64,24 @@ public:
     // that sampleTo also terminates when the goal is reached.
     virtual unsigned int sampleTo(ompl::control::Control *control, const ompl::base::State *source, ompl::base::State *dest);
 
+    virtual unsigned int sampleToTest(ompl::control::Control *control, const ompl::base::State *source, ompl::base::State *dest, unsigned int previousSteps)
+    {
+        return sampleTo(control, source, dest);
+    }
+
     virtual unsigned int sampleTo(ompl::control::Control *control, const ompl::control::Control * /* previous */,
         const ompl::base::State *source, ompl::base::State *dest)
     {
         return sampleTo(control, source, dest);
     }
+
+    /* test function for planning with dynamic obstacles */
+    virtual unsigned int sampleToTest(ompl::control::Control *control, const ompl::control::Control *previous, 
+        const ompl::base::State *source, ompl::base::State *dest, unsigned int previousSteps)
+    {
+        return sampleToTest(control, source, dest, previousSteps);
+    }
+
 protected:
     KoulesControlSampler                     cs_;
     ompl::RNG                                rng_;

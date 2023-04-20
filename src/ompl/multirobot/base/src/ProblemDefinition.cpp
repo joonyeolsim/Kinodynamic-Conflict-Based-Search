@@ -96,6 +96,11 @@ void ompl::multirobot::base::ProblemDefinition::addSolutionPlan(const PlannerSol
     solutions_->add(sol);
 }
 
+ompl::multirobot::base::PlanPtr ompl::multirobot::base::ProblemDefinition::getSolutionPlan() const
+{
+    return solutions_->getTopSolution();
+}
+
 // void ompl::multirobot::base::ProblemDefinition::setStartAndGoalStatesAtIndex(unsigned int index, const ompl::base::State *start, 
 //         const ompl::base::State *goal, double threshold)
 // {

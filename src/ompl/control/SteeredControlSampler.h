@@ -68,10 +68,25 @@ namespace ompl
                 return si_->propagateWhileValid(source, control, steps, dest);
             }
 
+            unsigned int sampleToTest(Control *control, const base::State *source, base::State *dest, unsigned int previousSteps) override
+            {
+                double duration;
+                if (!si_->getStatePropagator()->steer(source, dest, control, duration))
+                    return 0;
+                unsigned int steps = std::floor(duration / si_->getPropagationStepSize() + 0.5);
+                return si_->propagateWhileValidTest(source, control, steps, dest, previousSteps);
+            }
+
             unsigned int sampleTo(Control *control, const Control * /*previous*/, const base::State *source,
                                   base::State *dest) override
             {
                 return sampleTo(control, source, dest);
+            }
+
+            unsigned int sampleToTest(Control *control, const Control * /*previous*/, const base::State *source,
+                                  base::State *dest, unsigned int previousSteps) override
+            {
+                return sampleToTest(control, source, dest, previousSteps);
             }
         };
     }

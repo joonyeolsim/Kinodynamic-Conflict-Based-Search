@@ -34,49 +34,60 @@
 
 /* Author: Justin Kottinger */
 
-#include "ompl/multirobot/geometric/PlanGeometric.h"
+#ifndef OMPL_MULTIROBOT_CONTROL_PLANNERS_PP_
+#define OMPL_MULTIROBOT_CONTROL_PLANNERS_PP_
 
-ompl::multirobot::geometric::PlanGeometric::PlanGeometric(const PlanGeometric &plan) : ompl::multirobot::base::Plan(plan.si_)
-{
-    copyFrom(plan);
-}
+#include "ompl/multirobot/control/planners/PlannerIncludes.h"
+#include "ompl/base/Planner.h"
 
-void ompl::multirobot::geometric::PlanGeometric::copyFrom(const PlanGeometric &other)
+
+namespace ompl
 {
-    paths_.resize(other.paths_.size());
-    for (unsigned int i = 0; i < paths_.size(); ++i)
+    namespace multirobot
     {
-        paths_[i] = std::make_shared<ompl::geometric::PathGeometric>(*other.paths_[i]);
+        namespace control
+        {
+            /**
+            @anchor cPP
+            @par Short description
+            Prioritized Planning (PP) is a decoupled planning framework 
+            where robots are assigned a priority and planned for sequentially. 
+            Robots of lower priority must avoid higher priority robots by 
+            treating them as dynamic obstacles.
+            */
+
+            /** \brief PP Algorithm */
+            class PP : public multirobot::base::Planner
+            {
+            public:
+                /** \brief Constructor */
+                PP(const SpaceInformationPtr &si, ompl::base::PlannerPtr solver = nullptr);
+
+                /** \brief Destructor */
+                ~PP() override;
+
+                void addPathAsDynamicObstacles(const unsigned int index, const ompl::control::PathControlPtr &path);
+
+                void getPlannerData(ompl::base::PlannerData &data) const override;
+
+                ompl::base::PlannerStatus solve(const ompl::base::PlannerTerminationCondition &ptc) override;
+
+                void clear() override;
+
+                void setup() override;
+
+            protected:
+
+                /** \brief Free the memory allocated by this planner */
+                void freeMemory();
+
+                ompl::base::PlannerPtr solver_;
+
+                /** \brief The base::SpaceInformation cast as control::SpaceInformation, for convenience */
+                const SpaceInformation *siC_;
+            };
+        }
     }
 }
 
-void ompl::multirobot::geometric::PlanGeometric::append(const ompl::geometric::PathGeometricPtr &path)
-{
-    paths_.push_back(std::make_shared<ompl::geometric::PathGeometric>(*path));
-}
-
-double ompl::multirobot::geometric::PlanGeometric::length() const
-{
-    double L = 0.0;
-    for (unsigned int i = 0; i < paths_.size(); ++i)
-        L += paths_[i]->length();
-    return L;   
-}
-
-void ompl::multirobot::geometric::PlanGeometric::print(std::ostream &out, std::string prefix) const
-{
-    for (unsigned int i = 0; i < paths_.size(); ++i)
-    {
-        out << prefix << " " << i << std::endl;
-        paths_[i]->print(out);
-    }
-}
-
-void ompl::multirobot::geometric::PlanGeometric::printAsMatrix(std::ostream &out, std::string prefix) const
-{
-    for (unsigned int i = 0; i < paths_.size(); ++i)
-    {
-        out << prefix << " " << i << std::endl;
-        paths_[i]->printAsMatrix(out);
-    }
-}
+#endif

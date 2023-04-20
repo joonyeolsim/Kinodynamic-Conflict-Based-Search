@@ -250,6 +250,9 @@ namespace ompl
             unsigned int propagateWhileValid(const base::State *state, const Control *control, int steps,
                                              base::State *result) const;
 
+            unsigned int propagateWhileValidTest(const base::State *state, const Control *control, int steps, 
+                                             base::State *result, unsigned int previousSteps) const;
+
             /** \brief Propagate the model of the system forward, starting a a given state, with a given control, for a
                given number of steps.
                 \param state the state to start at
