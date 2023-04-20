@@ -36,7 +36,6 @@
 
 #include <ompl/multirobot/control/SpaceInformation.h>
 #include <ompl/multirobot/base/ProblemDefinition.h>
-#include <ompl/multirobot/base/PlanValidityChecker.h>
 #include <ompl/base/goals/GoalRegion.h>
 #include <ompl/multirobot/control/planners/pp/PP.h>
 #include <ompl/multirobot/control/planners/kcbs/KCBS.h>
@@ -58,12 +57,12 @@ namespace oc = ompl::control;
 
 
 /* 
-When performing Multi-Robot Motion Planning, it is often the case that 
+When performing Multi-Robot Motion Planning, it is sometimes the case that 
 robots are treated as "dynamic obstacles" by other robots (e.g. Prioritized Planning and Kinodynamic Conflict-Based Search). 
 Thus, we have extended OMPL to account for dynamic obstacles. To do so, one must implement an additional method called 
 ``areStatesValid" from the StateValidityChecker class. The method should return true if state1 and state2 are not in collision.
-state2 is a pair consisting of the SpaceInformation and state of the ``other" robot. The SpaceInformation object is included 
-so that heterogeneous robots can be properly accounted for. The example code below shows how to do this. Keep in mind that 
+state2 is a pair consisting of the actual state and the SpaceInformation from which the state lives. The SpaceInformation object is included 
+so that heterogeneous robots can be properly accounted for (see the example below). Keep in mind that 
 time-dependence is handled generically within OMPL. Please see ob::StateValidityChecker::isValid(const State *state, const double time) 
 for details.
 */
@@ -107,8 +106,8 @@ public:
 
         // one must code required logic to figure out if robot1 at state1 collides with robot2 at state2
         // this example assumes all robots are disks in R^2 of varying sizes.
-        double rad1 = radii_.at(robot1);
-        double rad2 = radii_.at(robot2);
+        double rad1 = radii_.at(robot1) + 0.1; // safety criterion
+        double rad2 = radii_.at(robot2) + 0.1; // safety criterion
 
         const double* robot1_pos = robot1_state->as<ob::RealVectorStateSpace::StateType>(0)->values;
         const double* robot2_pos = robot2_state->as<ob::RealVectorStateSpace::StateType>(0)->values;
@@ -121,6 +120,30 @@ private:
     std::unordered_map<std::string, double> radii_{ {"Robot 0", 0.1}, 
                                                     {"Robot 1", 0.2}, 
                                                     {"Robot 2", 0.3} };
+};
+
+/*
+Initially, K-CBS is a fully decoupled algorithm. However, in 
+certain scenarios, coupling sub-sets of robots are neccesssary to find plans. Thus, 
+K-CBS couples certain robots, as needed, while planning. The user must create this behavior based on problem specific elements. 
+Thus, the user may implement a SystemMerger, which returns a new omrc::SpaceInformation and omrb::ProblemDefintion pair after 
+coupling individuals index1 and index2 together.K-CBS calls the merge function, as needed, to find solutions. In the first case, 
+K-CBS is a fully coupled planner. However, experiments show that this is rarely needed and K-CBS usually finds solutions much before 
+this point. Nevertheless, the capabilities are possible. 
+*/
+class myDemoSystemMerger: public omrc::SystemMerger
+{
+public: 
+    myDemoSystemMerger(const omrc::SpaceInformationPtr &si): omrc::SystemMerger(si) {};
+
+    virtual std::pair<const omrc::SpaceInformationPtr, const ompl::multirobot::base::ProblemDefinitionPtr> merge(const int index1, const int index2) const override
+    {
+        // actually perform the problem set-up here and return the SpaceInformation and ProblemDefinition -- return pair with nullptrs if unable to merge
+        if (index1 > 0 && index2 > 0) 
+            return std::make_pair(nullptr, nullptr);
+        else
+            return std::make_pair(nullptr, nullptr);
+    }
 };
 
 
@@ -159,7 +182,7 @@ void myDemoPropagateFunction(const ob::State *start, const oc::Control *control,
         rot    + ctrl[1] * duration);
 }
 
-void plan()
+void plan(const std::string plannerName)
 {
     // create start and goals for every robot
     std::unordered_map<std::string, std::pair<int, int>> start_map{ {"Robot 0", {1, 1}}, 
@@ -239,40 +262,55 @@ void plan()
     ma_si->lock();
     ma_pdef->lock();
 
-    // set the plan validity checker (not used by all planners)
-    // ma_si->setPlanValidityChecker(std::make_shared<myDemoPlanValidityChecker>(ma_si));
-
-    // // plan for all agents using a prioritized planner (PP)
-    // auto planner = std::make_shared<omrc::PP>(ma_si);
-    // planner->setProblemDefinition(ma_pdef); // be sure to set the problem definition
-    // bool solved = planner->as<omrb::Planner>()->solve(30.0);
-
-    // if (solved)
-    // {
-    //     std::cout << "Found solution!" << std::endl;
-    //     omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
-    //     solution->as<omrc::PlanControl>()->printAsMatrix(std::cout);
-    // }
-
-    // plan for all agents using a Kinodynamic Conflict Based Search
-    auto planner2 = std::make_shared<omrc::KCBS>(ma_si);
-    planner2->setProblemDefinition(ma_pdef); // be sure to set the problem definition
-    bool solved = planner2->as<omrb::Planner>()->solve(30.0);
-    if (solved)
+    if (plannerName == "PP")
     {
-        std::cout << "Found solution!" << std::endl;
-        omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
-        std::ofstream MyFile("plan.txt");
-        solution->as<omrc::PlanControl>()->printAsMatrix(MyFile, "Robot");
-        planner2->printConstraintTree(std::cout);
+        // plan for all agents using a prioritized planner (PP)
+        auto planner = std::make_shared<omrc::PP>(ma_si);
+        planner->setProblemDefinition(ma_pdef); // be sure to set the problem definition
+        bool solved = planner->as<omrb::Planner>()->solve(30.0);
+
+        if (solved)
+        {
+            std::cout << "Found solution!" << std::endl;
+            omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
+            std::ofstream MyFile("plan.txt");
+            solution->as<omrc::PlanControl>()->printAsMatrix(MyFile, "Robot");
+        }
     }
+    else if (plannerName == "K-CBS")
+    {
+        // plan using Kinodynamic Conflict Based Search
+        auto planner = std::make_shared<omrc::KCBS>(ma_si);
+        planner->setProblemDefinition(ma_pdef); // be sure to set the problem definition
+
+        // set the system merger
+        // ma_si->setSystemMerger(std::make_shared<myDemoSystemMerger>(ma_si));
+
+        // set the merge bound of K-CBS
+        // planner->setMergeBound(0);
+
+        bool solved = planner->as<omrb::Planner>()->solve(30.0);
+        if (solved)
+        {
+            std::cout << "Found solution!" << std::endl;
+            omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
+            std::ofstream MyFile("plan.txt");
+            solution->as<omrc::PlanControl>()->printAsMatrix(MyFile, "Robot");
+            std::ofstream MyFile2("tree.txt");
+            planner->printConstraintTree(MyFile2);
+        }
+    }
+    
+    
 }
 
 int main(int /*argc*/, char ** /*argv*/)
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    plan();
+    std::string plannerName = "K-CBS";
+    // std::string plannerName = "PP";
+    plan(plannerName);
 
     return 0;
 }
