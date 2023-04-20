@@ -38,7 +38,6 @@
 #define OMPL_MULTIROBOT_SPACE_INFORMATION_
 
 #include "ompl/base/SpaceInformation.h"
-#include "ompl/multirobot/base/PlanValidityChecker.h"
 
 namespace ompl
 {
@@ -89,18 +88,6 @@ namespace ompl
                 /** \brief Adds an individual as part of the multi-agent state space. */
                 void addIndividual(const ompl::base::SpaceInformationPtr &individual);
 
-                /** \brief Set the instance of the plan validity checker to use. */
-                void setPlanValidityChecker(const PlanValidityCheckerPtr &svc)
-                {
-                    planValidityChecker_ = svc;
-                    setup_ = false;
-                }
-
-                bool isPlanValid(const PlanPtr &plan) const
-                {
-                    return planValidityChecker_->isValid(plan);
-                }
-
                 /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
                 virtual void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const
                 {
@@ -130,9 +117,6 @@ namespace ompl
             protected:
                 /** \brief The individual space informations that make up the multi-agent state space */
                 std::vector<ompl::base::SpaceInformationPtr> individuals_;
-
-                /** \brief An instance of the plan validity checker */
-                PlanValidityCheckerPtr planValidityChecker_{nullptr};
 
                 /** \brief The number of indivudals in the multi-agent state space */
                 unsigned int individualCount_{0u};

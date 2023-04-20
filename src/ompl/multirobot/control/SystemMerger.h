@@ -1,7 +1,7 @@
 /*********************************************************************
 * Software License Agreement (BSD License)
 *
-*  Copyright (c) 2010, Rice University
+*  Copyright (c) 2008, Willow Garage, Inc.
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
 *     copyright notice, this list of conditions and the following
 *     disclaimer in the documentation and/or other materials provided
 *     with the distribution.
-*   * Neither the name of the Rice University nor the names of its
+*   * Neither the name of the Willow Garage nor the names of its
 *     contributors may be used to endorse or promote products derived
 *     from this software without specific prior written permission.
 *
@@ -34,12 +34,51 @@
 
 /* Author: Justin Kottinger */
 
-#ifndef OMPL_MULTIROBOT_CONTROL_PLANNERS_PLANNER_INCLUDES_
-#define OMPL_MULTIROBOT_CONTROL_PLANNERS_PLANNER_INCLUDES_
+#ifndef OMPL_MULTIROBOT_BASE_PLAN_VALIDITY_CHECKER_
+#define OMPL_MULTIROBOT_BASE_PLAN_VALIDITY_CHECKER_
 
-#include "ompl/multirobot/base/Planner.h"
 #include "ompl/multirobot/control/SpaceInformation.h"
 #include "ompl/multirobot/base/ProblemDefinition.h"
-#include "ompl/multirobot/control/PlanControl.h"
+
+namespace ompl
+{
+    namespace multirobot
+    {
+        namespace control
+        {
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::base::SpaceInformation */
+            OMPL_CLASS_FORWARD(SpaceInformation);
+            /// @endcond
+            
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::base::SpaceInformation */
+            OMPL_CLASS_FORWARD(ProblemDefinition);
+            /// @endcond
+
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::multirobot::base::PlanValidityChecker */
+            OMPL_CLASS_FORWARD(SystemMerger);
+            /// @endcond
+
+            class SystemMerger
+            {
+            public:
+                /** \brief Constructor */
+                SystemMerger(const SpaceInformationPtr &si) : si_(si)
+                {
+                }
+
+                /** \brief Given two individuals (index1 and index2), compose them together and return a different ompl::multirobot::SpaceInformation object */
+                virtual std::pair<const SpaceInformationPtr, const ompl::multirobot::base::ProblemDefinitionPtr> merge(const int index1, const int index2) const = 0;
+
+            protected:
+                /** \brief The instance of space information this state validity checker operates on */
+                const SpaceInformationPtr si_;
+
+            };
+        }
+    }
+}
 
 #endif

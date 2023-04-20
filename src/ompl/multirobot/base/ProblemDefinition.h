@@ -53,6 +53,7 @@ namespace ompl
             /** \brief Forward declaration of ompl::base::ProblemDefinition */
             OMPL_CLASS_FORWARD(ProblemDefinition);
             OMPL_CLASS_FORWARD(OptimizationObjective);
+            OMPL_CLASS_FORWARD(Plan);
             /// @endcond
 
             /** \brief Representation of a solution to the multi-agent planning problem */
