@@ -46,7 +46,7 @@
 #include <utility>
 #include <queue>
 #include <map>
-#include <set>
+#include <unordered_set>
 
 
 namespace ompl
@@ -55,6 +55,11 @@ namespace ompl
     {
         namespace control
         {
+            /// @cond IGNORE
+            /** \brief Forward declaration of ompl::base::SpaceInformation */
+            OMPL_CLASS_FORWARD(KCBS);
+            /// @endcond
+
             /**
             @anchor cKCBS
             @par Short description
@@ -90,9 +95,9 @@ namespace ompl
                 void setup() override;
 
                 /** Set the merge bound. */
-                void setMergeBound(int b) {mergeBound_ = b;};
+                void setMergeBound(unsigned int b) {mergeBound_ = b;};
 
-                int getMergeBound() const {return mergeBound_;};
+                unsigned int getMergeBound() const {return mergeBound_;};
 
                 /** Set the low-level solve time. */
                 void setLowLevelSolveTime(const double t) {llSolveTime_ = t;};
@@ -102,8 +107,8 @@ namespace ompl
                 {
                     boost::dynamic_properties dp;
                     auto bundle = get(boost::vertex_bundle, tree_);
-                    dp.property("node_id", boost::make_transform_value_property_map(std::mem_fn(&Node::getName), bundle));
-                    dp.property("label", boost::make_transform_value_property_map(std::mem_fn(&Node::getID), bundle));
+                    // dp.property("node_id", boost::make_transform_value_property_map(std::mem_fn(&Node::getName), bundle));
+                    dp.property("node_id", boost::make_transform_value_property_map(std::mem_fn(&Node::getLabel), bundle));
                     write_graphviz_dp(out, tree_, dp);
                 }
 
@@ -170,6 +175,11 @@ namespace ompl
                     std::string getName() const { return name_; };
 
                     int getID() const {return id_;};
+
+                    std::string getLabel()
+                    {
+                        return getName() + "\n" + std::to_string(getID());
+                    }
                 
                 private:
                     /** \brief Generates a random alpha-numeric name for a node */
@@ -185,7 +195,6 @@ namespace ompl
                         for(int i = 0; i < 8; ++i) {
                             name += chars[index_dist(rng)];
                         }
-                        std::cout << name << std::endl;
                         return name;
                     }
                     
@@ -218,6 +227,15 @@ namespace ompl
                     {
                         // defines a min-heap on a nodes cost
                         return n1->getCost() > n2->getCost();
+                    }
+                };
+
+                /** \brief The hash function for the nodes, used to maintain uniqueness inside allNodesSet_ */
+                struct NodeHasher
+                {
+                    std::size_t operator()(const NodePtr &node) const
+                    {
+                        return std::hash<std::string>()(node->getName());
                     }
                 };
 
@@ -255,17 +273,16 @@ namespace ompl
                 double llSolveTime_;
 
                 /** \brief The bound for merging two individuals into one */
-                int mergeBound_;
+                unsigned int mergeBound_;
 
                 /** \brief A hash table to track the conflict pairs -- used in conjuntion with mergeBound_ for triggering a merge. */
-                std::map<std::pair<int, int>, int> conflictCounter_;
-
+                std::map<std::pair<int, int>, unsigned int> conflictCounter_;
 
                 /** \brief The priority queue of the constraint tree */
                 std::priority_queue<NodePtr, std::vector<NodePtr>, NodeCompare> pq_;
 
                 /** \brief A list of all nodes, used by freeMemory */
-                std::set<NodePtr> allNodesSet_;
+                std::unordered_set<NodePtr, NodeHasher> allNodesSet_;
 
                 using BoostGraph = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, NodePtr>;
                 /** \brief the boost::adjacency_list object used for examining the high-level constraint tree's behavior. */
@@ -276,6 +293,9 @@ namespace ompl
 
                 /** \brief The number of nodes expanded during the search. */
                 unsigned int numNodesExpanded_;
+
+                /** \brief Another instance of K-CBS for solving the merged problem -- not always used but saved for memory purposes. */
+                KCBSPtr mergerPlanner_{nullptr};
                 
             };
         }

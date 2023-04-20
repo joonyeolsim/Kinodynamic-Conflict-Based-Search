@@ -99,10 +99,15 @@ void ompl::multirobot::control::KCBS::setup()
             conflictCounter_.insert({std::make_pair(r1, r2), 0});
         }
     }
+
+    // check if merger is set
+    if (!siC_->getSystemMerger())
+        OMPL_WARN("%s: SystemMerger not set! Planner will fail if mergeBound_ is triggered.", getName().c_str());
 }
 
 void ompl::multirobot::control::KCBS::pushNode(const NodePtr &n)
 {
+    // add a node to the tree_ and pq_
     allNodesSet_.insert(n);
     boost::graph_traits<BoostGraph>::vertex_descriptor v = add_vertex(n, tree_);
     treeMap_.insert({n->getName(), v});
@@ -113,6 +118,7 @@ void ompl::multirobot::control::KCBS::pushNode(const NodePtr &n)
 
 ompl::multirobot::control::KCBS::NodePtr ompl::multirobot::control::KCBS::popNode()
 {
+    // pop a node and assign it an ID
     numNodesExpanded_ += 1;
     NodePtr n = pq_.top();
     n->setID(numNodesExpanded_);
@@ -168,12 +174,12 @@ std::vector<ompl::multirobot::control::KCBS::Conflict> ompl::multirobot::control
                     while (inCollision_ && step < maxSteps)
                     {
                         step++;
-                        if (k < plan->getPath(r1)->getStateCount())
+                        if (step < plan->getPath(r1)->getStateCount())
                             state1 = plan->getPath(r1)->getState(step);
                         else
                             state1 = plan->getPath(r1)->getStates().back();
                 
-                        if (k < plan->getPath(r2)->getStateCount())
+                        if (step < plan->getPath(r2)->getStateCount())
                             otherStatePair.second = plan->getPath(r2)->getState(step);
                         else
                             otherStatePair.second = plan->getPath(r2)->getStates().back();
@@ -196,33 +202,33 @@ std::vector<ompl::multirobot::control::KCBS::Conflict> ompl::multirobot::control
 
 void ompl::multirobot::control::KCBS::updateConflictCounter(const std::vector<Conflict> &conflicsts)
 {
+    // update the conflictCounter map with the newly found conflicts.
     for (auto &c: conflicsts)
     {
         conflictCounter_[std::make_pair(c.robots_[0], c.robots_[1])] += 1;
     }
-    for (auto itr = conflictCounter_.begin(); itr != conflictCounter_.end(); itr++)
-        std::cout << (itr->first).first << "," << (itr->first).second << ": " << (itr->second) << std::endl;
 }
 
 std::pair<int, int> ompl::multirobot::control::KCBS::mergeNeeded()
 {
+    // iterate through all of the possible merge pairs and check if any pairs have too many conflicts. If so, return the pair. Otherwise, return (-1, -1)
     for (auto itr = conflictCounter_.begin(); itr != conflictCounter_.end(); itr++)
     {
-        if (itr->second >= mergeBound_)
+        if (itr->second > mergeBound_)
             return itr->first;
     }
     return std::make_pair(-1, -1);
 }
 
-const ompl::multirobot::control::KCBS::ConstraintPtr ompl::multirobot::control::KCBS::createConstraint(const unsigned int robot, std::vector<Conflict> &confs)
+const ompl::multirobot::control::KCBS::ConstraintPtr ompl::multirobot::control::KCBS::createConstraint(const unsigned int index, std::vector<Conflict> &confs)
 {
     // create new constraint for robot that avoids other_robot
-    unsigned int other_robot = (robot == 0) ? 1 : 0;
-    const ConstraintPtr constraint = std::make_shared<Constraint>(robot, siC_->getIndividual(confs.front().robots_[other_robot]));
+    unsigned int other_index = (index == 0) ? 1 : 0;
+    const ConstraintPtr constraint = std::make_shared<Constraint>(confs.front().robots_[index], siC_->getIndividual(confs.front().robots_[other_index]));
     for (auto &c: confs)
     {
         constraint->timeSteps_.push_back(c.timeStep_);
-        constraint->constrainingStates_.push_back(c.states_[other_robot]);
+        constraint->constrainingStates_.push_back(c.states_[other_index]);
     }
     return constraint;
 }
@@ -241,6 +247,8 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
 
     // clear existing low-level planner data and existing dynamic obstacles
     siC_->getIndividual(robot)->clearDynamicObstacles();
+
+    std::cout << "attempting a replan for robot " << robot << " under " << constraints.size() << "constraints" << std::endl;
 
     // add the new dynamic obstacles (the constraints)
     for (ConstraintPtr &c: constraints)
@@ -275,6 +283,7 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     }
     else
     {
+        // save the tree prior to exit
         std::cout << "REPLANNING FAILED! THIS IS A TODO ITEM!" << std::endl;
     }
 }
@@ -301,7 +310,8 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
         }
         else
         {
-            break;
+            OMPL_INFORM("%s: Unable to find intial plan. Exiting with no solution.", getName().c_str());
+            return {false, false};
         }
     }
 
@@ -320,16 +330,14 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
         // TODO: if currentNode has no plan, then try to find one again
         if (currentNode->getCost() < 0)
         {
-            std::cout << "ENTERED REPLANNING LOGIC! THIS IS A TODO ITEM!" << std::endl;
+            // use existing tree to replan
+            OMPL_INFORM("%s: Entered replanning logic which has not yet been implemented. This is a to-do item. Exiting with no solution.", getName().c_str());
+            return {false, false};
         }
         else
         {
             // find conflicts in the current plan
             std::vector<Conflict> confs = findConflicts(currentNode->getPlan());
-            for (auto &c: confs)
-            {
-                std::cout << "Conflict between " << c.robots_[0] << " and " << c.robots_[1] << " at time step " << c.timeStep_ << std::endl;
-            }
 
             // if no conflicts were found, return as solution
             if (confs.empty()) {
@@ -337,14 +345,40 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
                 break;
             }
 
+            // for (auto &c: confs)
+            // {
+            //     std::cout << "conflict between " << c.robots_[0] << " and " << c.robots_[1] << " at time " << c.timeStep_ << " with states " << c.states_[0] << " and " << c.states_[1]  << std::endl;
+            // }
+
             // update the conflictCounter_;
             updateConflictCounter(confs);
 
-            // TODO: if a merge is needed, then merge and restart
-            if (mergeNeeded() != std::make_pair(-1, -1))
+            // if merge is needed, then merge and restart the search
+            std::pair<int, int> merge_indices = mergeNeeded();
+            if (merge_indices != std::make_pair(-1, -1))
             {
-                std::cout << "ENTERED MERGE LOGIC! THIS IS A TODO ITEM!" << std::endl;
-                // return mergeAndRestart();
+                if (!siC_->getSystemMerger())
+                {
+                    OMPL_INFORM("%s: Merge was triggered but no SystemMerger was provided. Returning with failure.", getName().c_str());
+                    return {false, false};
+                }
+                else
+                {
+                    OMPL_INFORM("%s: Merge was triggered. Composing individuals %d and %d.", getName().c_str(), merge_indices.first, merge_indices.second);
+                    std::pair<const SpaceInformationPtr, const ompl::multirobot::base::ProblemDefinitionPtr> new_defs = siC_->merge(merge_indices.first, merge_indices.second);
+                    if (new_defs.first && new_defs.second)
+                    {
+                        mergerPlanner_ = std::make_shared<KCBS>(new_defs.first);
+                        mergerPlanner_->setProblemDefinition(new_defs.second);
+                        return mergerPlanner_->solve(ptc);
+                    }
+                    else
+                    {
+                        OMPL_INFORM("%s: SystemMerge was triggered but failed. Returning with failure.", getName().c_str());
+                        return {false, false};
+                    }
+                    
+                }
             }
 
             // create a constraint for every agent in confs
@@ -358,13 +392,15 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
                 // create a new constraint
                 const ConstraintPtr new_constraint = createConstraint(r, confs);
 
+                // std::cout << "Created constraint for robot " << new_constraint->constrainedRobot_ << std::endl;
+
                 // create a new node to house the new constraint, also assign a parent
                 NodePtr nxtNode = std::make_shared<Node>();
                 nxtNode->setParent(currentNode);
                 nxtNode->setConstraint(new_constraint);
 
-                attemptReplan(r, nxtNode);
-                std::cout << "here " << nxtNode->getCost() << std::endl;
+                // attempt to replan and push node to priority queue
+                attemptReplan(new_constraint->constrainedRobot_, nxtNode);
                 pushNode(nxtNode);
             }
         }
