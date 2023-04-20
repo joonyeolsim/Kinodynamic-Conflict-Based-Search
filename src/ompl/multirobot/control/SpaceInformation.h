@@ -39,6 +39,7 @@
 
 #include "ompl/multirobot/base/SpaceInformation.h"
 #include "ompl/control/SpaceInformation.h"
+#include "ompl/multirobot/control/SystemMerger.h"
 
 namespace ompl
 {
@@ -69,6 +70,17 @@ namespace ompl
                 /** \brief Adds an individual as part of the multi-agent state space. */
                 void addIndividual(const ompl::control::SpaceInformationPtr &individual);
 
+                /** \brief Set the instance of the plan validity checker to use. */
+                void setSystemMerger(const SystemMergerPtr &merger)
+                {
+                    systemMerger_ = merger;
+                }
+
+                std::pair<const SpaceInformationPtr, const ompl::multirobot::base::ProblemDefinitionPtr> merge(const int index1, const int index2) const
+                {
+                    return systemMerger_->merge(index1, index2);
+                }
+
                 /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
                 void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const override
                 {
@@ -78,11 +90,16 @@ namespace ompl
                 /** \brief Get a specific subspace from the compound state space */
                 const ompl::control::SpaceInformationPtr &getIndividual(unsigned int index) const;
 
+                const SystemMergerPtr &getSystemMerger() const {return systemMerger_;};
+
                 virtual void setup() override;
 
             protected:
                 /** \brief The individual space informations that make up the multi-agent state space */
                 std::vector<ompl::control::SpaceInformationPtr> individuals_;
+
+                /** \brief An instance of the plan validity checker */
+                SystemMergerPtr systemMerger_{nullptr};
             };
         }
     }
