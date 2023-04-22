@@ -295,3 +295,59 @@ void ompl::control::RRT::getPlannerData(base::PlannerData &data) const
             data.addStartVertex(base::PlannerDataVertex(m->state));
     }
 }
+
+void ompl::control::RRT::setPlannerData(const base::PlannerData &data)
+{
+    Planner::setPlannerData(data);
+    const double delta = siC_->getPropagationStepSize();
+
+    std::unordered_map<const base::State*, Motion*> motion_map;
+
+    // fill a map with a motion for every state in data
+    for (unsigned int v = 0; v < data.numVertices(); ++v)
+    {
+        // get the state of the vertex located at this index
+        const base::State* state = data.getVertex(v).getState(); 
+
+        // get parent motion from motion_map, if DNE, add it
+        auto nmotion_itr = motion_map.find(state);
+        if (nmotion_itr == motion_map.end())
+        {
+            auto *nmotion = new Motion(siC_);
+            si_->copyState(nmotion->state, state);
+            auto pair = motion_map.insert({state, nmotion});
+            nmotion_itr = pair.first;
+        }
+
+        // get the out edges of this state
+        std::map<unsigned int, const base::PlannerDataEdge*> edges_map;
+        data.getEdges(v, edges_map);
+        for (auto edge_itr = edges_map.begin(); edge_itr != edges_map.end(); ++edge_itr)
+        {
+            const base::State* nxtState = data.getVertex(edge_itr->first).getState();
+            // get the motion from motion_map, if DNE, add it
+            auto motion_itr = motion_map.find(nxtState);
+            if (motion_itr == motion_map.end())
+            {
+                auto *motion = new Motion(siC_);
+                si_->copyState(motion->state, nxtState);
+                auto pair = motion_map.insert({nxtState, motion});
+                motion_itr = pair.first;
+            }
+
+            // collect relevant info from edge
+            auto edge_control = dynamic_cast<const control::PlannerDataEdgeControl*>(edge_itr->second);
+            const Control* cntrl = edge_control->getControl();
+            unsigned int steps = std::round(edge_control->getDuration() / delta);
+
+            // for every outgoing edge, assign the parent, control, and steps parameter
+            siC_->copyControl(motion_itr->second->control, cntrl);
+            motion_itr->second->steps = steps;
+            motion_itr->second->parent = nmotion_itr->second;
+        }  
+    }
+
+    // now iterate through the map and all all the motions to nn_
+    for (auto itr = motion_map.begin(); itr != motion_map.end(); ++itr)
+        nn_->add(itr->second);
+}

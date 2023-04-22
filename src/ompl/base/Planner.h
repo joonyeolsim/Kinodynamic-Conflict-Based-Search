@@ -33,6 +33,7 @@
 *********************************************************************/
 
 /* Author: Ioan Sucan */
+/* Editted by Justin Kottinger for planning with existing Planner Data */
 
 #ifndef OMPL_BASE_PLANNER_
 #define OMPL_BASE_PLANNER_
@@ -308,6 +309,10 @@ namespace ompl
                 (without calling clear() in between).  */
             virtual void getPlannerData(PlannerData &data) const;
 
+            /** \brief Reconstructs the datastructures using information from data. 
+                This is planner specific and should be overridden. */
+            virtual void setPlannerData(const PlannerData &data);
+
             /** \brief Get the name of the planner */
             const std::string &getName() const;
 
@@ -431,6 +436,9 @@ namespace ompl
 
             /** \brief Flag indicating whether setup() has been called */
             bool setup_;
+
+            /** \brief Flag indicating whether setPlannerData() has been called */
+            bool plannerDataSet_;
         };
 
         /** \brief Definition of a function that can allocate a planner */

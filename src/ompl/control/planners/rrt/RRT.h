@@ -112,6 +112,8 @@ namespace ompl
 
             void getPlannerData(base::PlannerData &data) const override;
 
+            void setPlannerData(const base::PlannerData &data) override;
+
             /** \brief Set a different nearest neighbors datastructure */
             template <template <typename T> class NN>
             void setNearestNeighbors()
