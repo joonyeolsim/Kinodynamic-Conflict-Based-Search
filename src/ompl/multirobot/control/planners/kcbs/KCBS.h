@@ -38,6 +38,7 @@
 #define OMPL_MULTIROBOT_CONTROL_PLANNERS_KCBS_
 
 #include "ompl/multirobot/control/planners/PlannerIncludes.h"
+#include "ompl/control/PlannerData.h"
 #include "ompl/base/Planner.h"
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphviz.hpp>
@@ -150,9 +151,11 @@ namespace ompl
                 class Node
                 {
                 public:
-                    Node(): plan_(nullptr), parent_(nullptr), constraint_(nullptr), cost_(std::numeric_limits<double>::max()), name_(generateRandomName()), id_(-1) {};
+                    Node(): plan_(nullptr), parent_(nullptr), constraint_(nullptr), 
+                        cost_(-1), name_(generateRandomName()), id_(-1), data_(nullptr) {}; //std::numeric_limits<double>::max()
 
-                    Node(const PlanControlPtr plan): plan_(plan), parent_(nullptr), constraint_(nullptr), cost_(plan->length()), name_(generateRandomName()), id_(-1) {};
+                    Node(const PlanControlPtr plan): plan_(plan), parent_(nullptr), constraint_(nullptr), 
+                        cost_(plan->length()), name_(generateRandomName()), id_(-1), data_(nullptr) {};
 
                     void setPlan(const PlanControlPtr &plan) {plan_ = plan;};
 
@@ -163,6 +166,8 @@ namespace ompl
                     void setCost(const double c) {cost_ = c;};
 
                     void setID(const int id) {id_ = id;};
+
+                    void setPlannerData(ompl::control::PlannerData* data) {data_ = data;};
 
                     const PlanControlPtr &getPlan() const {return plan_;};
 
@@ -180,6 +185,8 @@ namespace ompl
                     {
                         return getName() + "\n" + std::to_string(getID());
                     }
+
+                    ompl::control::PlannerData* getPlannerData() const {return data_;};
                 
                 private:
                     /** \brief Generates a random alpha-numeric name for a node */
@@ -216,8 +223,8 @@ namespace ompl
                     /** \brief The ID of the node is equal to the order that this* was popped from the priority queue -- used by BoostGraph */
                     int id_;
 
-                    /** \brief The planner that attempted to satisfy the constraint */
-                    // ompl::base::PlannerPtr planner_;
+                    /** \brief The PlannerData of the node -- used when replanning fails */
+                    ompl::control::PlannerData* data_;
                 };
 
                 /** \Brief The comparator function that the priority queue uses to sort the nodes. */
@@ -240,7 +247,7 @@ namespace ompl
                 };
 
                 /** \brief The main replanning function for the high-level constraint tree. Updates data of node if replan was successful */
-                void attemptReplan(const unsigned int robot, NodePtr &node);
+                void attemptReplan(const unsigned int robot, NodePtr &node, const bool retry = false);
 
                 /** \brief Create a constraint from the conflicts */
                 const ConstraintPtr createConstraint(const unsigned int robot, std::vector<Conflict> &confs);

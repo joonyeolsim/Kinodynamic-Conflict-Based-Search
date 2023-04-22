@@ -109,19 +109,25 @@ void ompl::multirobot::control::KCBS::pushNode(const NodePtr &n)
 {
     // add a node to the tree_ and pq_
     allNodesSet_.insert(n);
-    boost::graph_traits<BoostGraph>::vertex_descriptor v = add_vertex(n, tree_);
-    treeMap_.insert({n->getName(), v});
-    if (n->getParent())
-        add_edge(treeMap_[n->getParent()->getName()], treeMap_[n->getName()], tree_);
+    if (n->getID() == -1)
+    {
+        boost::graph_traits<BoostGraph>::vertex_descriptor v = add_vertex(n, tree_);
+        treeMap_.insert({n->getName(), v});
+        if (n->getParent())
+            add_edge(treeMap_[n->getParent()->getName()], treeMap_[n->getName()], tree_);
+    }
     pq_.push(n);    
 }
 
 ompl::multirobot::control::KCBS::NodePtr ompl::multirobot::control::KCBS::popNode()
 {
     // pop a node and assign it an ID
-    numNodesExpanded_ += 1;
     NodePtr n = pq_.top();
-    n->setID(numNodesExpanded_);
+    if (n->getID() == -1)
+    {
+        numNodesExpanded_ += 1;
+        n->setID(numNodesExpanded_);
+    }
     pq_.pop();
     return n;
 }
@@ -233,7 +239,7 @@ const ompl::multirobot::control::KCBS::ConstraintPtr ompl::multirobot::control::
     return constraint;
 }
 
-void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, NodePtr &node)
+void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, NodePtr &node, const bool retry)
 {
     // collect all of the constraints on robot by traversing constraint tree back to root node
     auto nCpy = node;
@@ -248,8 +254,6 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     // clear existing low-level planner data and existing dynamic obstacles
     siC_->getIndividual(robot)->clearDynamicObstacles();
 
-    std::cout << "attempting a replan for robot " << robot << " under " << constraints.size() << "constraints" << std::endl;
-
     // add the new dynamic obstacles (the constraints)
     for (ConstraintPtr &c: constraints)
     {
@@ -263,6 +267,12 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
 
     llSolvers_[robot]->clear();
     llSolvers_[robot]->getProblemDefinition()->clearSolutionPaths();
+
+    if (retry)
+    {
+        std::cout << "ATTEMPTING TO RECONSTRUCT TREE" << std::endl;
+        llSolvers_[robot]->setPlannerData(*node->getPlannerData());
+    }
 
     // attempt to find another trajectory
     // if successful, add the new plan to node prior to exit
@@ -284,7 +294,20 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     else
     {
         // save the tree prior to exit
-        std::cout << "REPLANNING FAILED! THIS IS A TODO ITEM!" << std::endl;
+        std::cout << "REPLANNING FAILED! ENTERING EXPERIMENTAL CODE BLOCK!" << std::endl;
+        if (retry)
+        {
+            llSolvers_[robot]->getPlannerData(*node->getPlannerData()); // update the planner data
+            node->getPlannerData()->decoupleFromPlanner();
+        }
+        else
+        {
+            // create new planner data object and save it
+            auto data = new ompl::control::PlannerData(siC_->getIndividual(robot));
+            llSolvers_[robot]->getPlannerData(*data);
+            data->decoupleFromPlanner();
+            node->setPlannerData(data);
+        }
     }
 }
 
@@ -325,14 +348,15 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
     while (!ptc && !pq_.empty())
     {
         // get the best unexplored node in the constraint tree
-        const NodePtr currentNode = popNode();
+        NodePtr currentNode = popNode();
 
         // TODO: if currentNode has no plan, then try to find one again
-        if (currentNode->getCost() < 0)
+        if (currentNode->getCost() < 0) // == inf
         {
-            // use existing tree to replan
+            // use existing tree to attempt a replan
             OMPL_INFORM("%s: Entered replanning logic which has not yet been implemented. This is a to-do item. Exiting with no solution.", getName().c_str());
-            return {false, false};
+            attemptReplan(currentNode->getConstraint()->constrainedRobot_, currentNode, true);
+            pushNode(currentNode);
         }
         else
         {
