@@ -289,6 +289,9 @@ void plan(const std::string plannerName)
         // set the merge bound of K-CBS
         // planner->setMergeBound(0);
 
+        // set the low-level solve time
+        planner->setLowLevelSolveTime(0.5);
+
         bool solved = planner->as<omrb::Planner>()->solve(30.0);
         if (solved)
         {
