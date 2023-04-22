@@ -42,7 +42,7 @@
 #include <utility>
 
 ompl::base::Planner::Planner(SpaceInformationPtr si, std::string name)
-  : si_(std::move(si)), pis_(this), name_(std::move(name)), setup_(false)
+  : si_(std::move(si)), pis_(this), name_(std::move(name)), setup_(false), plannerDataSet_(false)
 {
     if (!si_)
         throw Exception(name_, "Invalid space information instance for planner");
@@ -130,6 +130,13 @@ void ompl::base::Planner::getPlannerData(PlannerData &data) const
 {
     for (const auto &plannerProgressProperty : plannerProgressProperties_)
         data.properties[plannerProgressProperty.first] = plannerProgressProperty.second();
+}
+
+void ompl::base::Planner::setPlannerData(const PlannerData &data)
+{
+    for (const auto &plannerProgressProperty : plannerProgressProperties_)
+        plannerProgressProperty.second() = data.properties.at(plannerProgressProperty.first);
+    plannerDataSet_ = true;
 }
 
 ompl::base::PlannerStatus ompl::base::Planner::solve(const PlannerTerminationConditionFn &ptc, double checkInterval)
