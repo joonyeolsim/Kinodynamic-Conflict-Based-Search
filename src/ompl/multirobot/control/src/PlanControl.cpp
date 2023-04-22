@@ -64,7 +64,7 @@ void ompl::multirobot::control::PlanControl::append(const ompl::control::PathCon
 double ompl::multirobot::control::PlanControl::length() const
 {
     double L = 0.0;
-    for (unsigned int i = 1; i < paths_.size(); ++i)
+    for (unsigned int i = 0; i < paths_.size(); ++i)
         L += paths_[i]->length();
     return L;   
 }
