@@ -85,7 +85,12 @@ namespace ompl
                 void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const override
                 {
                     individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
-                } 
+                }
+
+                ompl::base::PlannerPtr allocatePlannerForIndividual(const unsigned int index) const override
+                {
+                    return pa_(individuals_[index]);
+                }
 
                 /** \brief Get a specific subspace from the compound state space */
                 const ompl::control::SpaceInformationPtr &getIndividual(unsigned int index) const;

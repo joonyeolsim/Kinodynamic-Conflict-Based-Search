@@ -35,7 +35,6 @@
 /* Author: Justin Kottinger */
 
 #include "ompl/multirobot/control/planners/kcbs/KCBS.h"
-#include "ompl/control/planners/rrt/RRT.h"
 
 ompl::multirobot::control::KCBS::KCBS(const ompl::multirobot::control::SpaceInformationPtr &si): 
     ompl::multirobot::base::Planner(si, "K-CBS"), llSolveTime_(1.), mergeBound_(std::numeric_limits<int>::max()), numNodesExpanded_(0)
@@ -83,12 +82,12 @@ void ompl::multirobot::control::KCBS::setup()
     }
 
     // setup low-level planners
+    llSolvers_.resize(siC_->getIndividualCount());
     for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
     {
-        auto planner = std::make_shared<ompl::control::RRT>(siC_->getIndividual(r));
-        planner->setProblemDefinition(pdef_->getIndividual(r));
-        // planner->specs_.approximateSolutions = false; // TO-DO: this will throw an error but it would be nice to set this to false
-        llSolvers_.push_back(planner);
+        llSolvers_[r] = siC_->allocatePlannerForIndividual(r);
+        llSolvers_[r]->setProblemDefinition(pdef_->getIndividual(r));
+        // lSolvers_[r]->specs_.approximateSolutions = false; // TO-DO: this will throw an error but it would be nice to set this to false
     }
 
     // setup conflictCounter_
@@ -268,15 +267,13 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     llSolvers_[robot]->clear();
     llSolvers_[robot]->getProblemDefinition()->clearSolutionPaths();
 
-    if (retry)
-    {
-        std::cout << "ATTEMPTING TO RECONSTRUCT TREE" << std::endl;
-        llSolvers_[robot]->setPlannerData(*node->getPlannerData());
-    }
-
     // attempt to find another trajectory
     // if successful, add the new plan to node prior to exit
-    llSolvers_[robot]->solve(llSolveTime_);
+    if (retry)
+        node->getLowLevelSolver()->solve(llSolveTime_);
+    else
+        llSolvers_[robot]->solve(llSolveTime_);
+    
     if (llSolvers_[robot]->getProblemDefinition()->hasExactSolution())
     {
         PlanControlPtr new_plan = std::make_shared<PlanControl>(si_);
@@ -293,20 +290,13 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     }
     else
     {
-        // save the tree prior to exit
-        std::cout << "REPLANNING FAILED! ENTERING EXPERIMENTAL CODE BLOCK!" << std::endl;
-        if (retry)
+        // save the planner prior to exit only if planner not already saved
+        if (!retry)
         {
-            llSolvers_[robot]->getPlannerData(*node->getPlannerData()); // update the planner data
-            node->getPlannerData()->decoupleFromPlanner();
-        }
-        else
-        {
-            // create new planner data object and save it
-            auto data = new ompl::control::PlannerData(siC_->getIndividual(robot));
-            llSolvers_[robot]->getPlannerData(*data);
-            data->decoupleFromPlanner();
-            node->setPlannerData(data);
+            // need to save the existing low-level solver to the node and create a new one for the rest of the system
+            node->setLowLevelSolver(llSolvers_[robot]);
+            llSolvers_[robot] = siC_->allocatePlannerForIndividual(robot);
+            llSolvers_[robot]->setProblemDefinition(pdef_->getIndividual(robot));
         }
     }
 }
@@ -317,7 +307,7 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
 
     OMPL_INFORM("%s: Starting planning. ", getName().c_str());
 
-    // create root node of constraint tree with an initial solution for every individual
+    // create root node of constraint tree with an initial path for every individual
     PlanControlPtr initalPlan = std::make_shared<PlanControl>(si_);
     for (auto itr = llSolvers_.begin(); itr != llSolvers_.end(); itr++) 
     {
@@ -350,11 +340,10 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
         // get the best unexplored node in the constraint tree
         NodePtr currentNode = popNode();
 
-        // TODO: if currentNode has no plan, then try to find one again
-        if (currentNode->getCost() < 0) // == inf
+        // if current node has not plan, then attempt to find one again
+        if (currentNode->getCost() == std::numeric_limits<double>::max())
         {
             // use existing tree to attempt a replan
-            OMPL_INFORM("%s: Entered replanning logic which has not yet been implemented. This is a to-do item. Exiting with no solution.", getName().c_str());
             attemptReplan(currentNode->getConstraint()->constrainedRobot_, currentNode, true);
             pushNode(currentNode);
         }
@@ -369,6 +358,7 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
                 break;
             }
 
+            // for debugging
             // for (auto &c: confs)
             // {
             //     std::cout << "conflict between " << c.robots_[0] << " and " << c.robots_[1] << " at time " << c.timeStep_ << " with states " << c.states_[0] << " and " << c.states_[1]  << std::endl;
@@ -377,7 +367,7 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
             // update the conflictCounter_;
             updateConflictCounter(confs);
 
-            // if merge is needed, then merge and restart the search
+            // if merge is needed, then merge and restart
             std::pair<int, int> merge_indices = mergeNeeded();
             if (merge_indices != std::make_pair(-1, -1))
             {

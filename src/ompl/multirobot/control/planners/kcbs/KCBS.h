@@ -152,10 +152,10 @@ namespace ompl
                 {
                 public:
                     Node(): plan_(nullptr), parent_(nullptr), constraint_(nullptr), 
-                        cost_(-1), name_(generateRandomName()), id_(-1), data_(nullptr) {}; //std::numeric_limits<double>::max()
+                        cost_(std::numeric_limits<double>::max()), name_(generateRandomName()), id_(-1), llSolver_(nullptr) {};
 
                     Node(const PlanControlPtr plan): plan_(plan), parent_(nullptr), constraint_(nullptr), 
-                        cost_(plan->length()), name_(generateRandomName()), id_(-1), data_(nullptr) {};
+                        cost_(plan->length()), name_(generateRandomName()), id_(-1), llSolver_(nullptr) {};
 
                     void setPlan(const PlanControlPtr &plan) {plan_ = plan;};
 
@@ -167,7 +167,9 @@ namespace ompl
 
                     void setID(const int id) {id_ = id;};
 
-                    void setPlannerData(ompl::control::PlannerData* data) {data_ = data;};
+                    void setLowLevelSolver(ompl::base::PlannerPtr &planner) {llSolver_ = planner;};
+
+                    // void setPlannerData(ompl::control::PlannerData* data) {data_ = data;};
 
                     const PlanControlPtr &getPlan() const {return plan_;};
 
@@ -183,10 +185,32 @@ namespace ompl
 
                     std::string getLabel()
                     {
-                        return getName() + "\n" + std::to_string(getID());
+                        std::string costString;
+                        if (cost_ < std::numeric_limits<double>::max())
+                            costString = std::to_string(cost_);
+                        else
+                            costString = "-1";
+
+                        std::string contstraintString;
+                        if (constraint_)
+                        {
+                            contstraintString = "{" + std::to_string(constraint_->constrainedRobot_) + 
+                                                ", [" + std::to_string(constraint_->timeSteps_.front()) + "," +
+                                                std::to_string(constraint_->timeSteps_.back()) + "]}";
+                        }
+                        else
+                            contstraintString = "None";
+                        
+                        std::string label = getName() + "\n" +
+                                            std::to_string(getID()) + "\n" +
+                                            costString + "\n" +
+                                            contstraintString;
+                        return label;
                     }
 
-                    ompl::control::PlannerData* getPlannerData() const {return data_;};
+                    ompl::base::PlannerPtr getLowLevelSolver() const {return llSolver_;};
+
+                    // ompl::control::PlannerData* getPlannerData() const {return data_;};
                 
                 private:
                     /** \brief Generates a random alpha-numeric name for a node */
@@ -223,8 +247,8 @@ namespace ompl
                     /** \brief The ID of the node is equal to the order that this* was popped from the priority queue -- used by BoostGraph */
                     int id_;
 
-                    /** \brief The PlannerData of the node -- used when replanning fails */
-                    ompl::control::PlannerData* data_;
+                    /** \brief The PlannerPtr responsible for filling this node. Only use during retry */
+                    ompl::base::PlannerPtr llSolver_;
                 };
 
                 /** \Brief The comparator function that the priority queue uses to sort the nodes. */

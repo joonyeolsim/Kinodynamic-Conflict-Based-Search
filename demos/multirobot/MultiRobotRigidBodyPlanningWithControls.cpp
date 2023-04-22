@@ -36,13 +36,14 @@
 
 #include <ompl/multirobot/control/SpaceInformation.h>
 #include <ompl/multirobot/base/ProblemDefinition.h>
-#include <ompl/base/goals/GoalRegion.h>
 #include <ompl/multirobot/control/planners/pp/PP.h>
 #include <ompl/multirobot/control/planners/kcbs/KCBS.h>
 
+#include <ompl/control/spaces/RealVectorControlSpace.h>
+#include "ompl/control/planners/rrt/RRT.h"
 #include <ompl/base/spaces/SE2StateSpace.h>
 #include <ompl/base/spaces/RealVectorBounds.h>
-#include <ompl/control/spaces/RealVectorControlSpace.h>
+#include <ompl/base/goals/GoalRegion.h>
 
 #include <ompl/config.h>
 #include <iostream>
@@ -182,6 +183,15 @@ void myDemoPropagateFunction(const ob::State *start, const oc::Control *control,
         rot    + ctrl[1] * duration);
 }
 
+// K-CBS and PP both work for multiple type of low-level planners. 
+// Providing this function to the multi-agent space information will let you use any of them
+ompl::base::PlannerPtr myDemoPlannerAllocator(const ompl::base::SpaceInformationPtr &si)
+{
+    const oc::SpaceInformationPtr siC = std::static_pointer_cast<ompl::control::SpaceInformation>(si); // dynamic
+    ompl::base::PlannerPtr planner = std::make_shared<oc::RRT>(siC);
+    return planner;
+}
+
 void plan(const std::string plannerName)
 {
     // create start and goals for every robot
@@ -262,6 +272,10 @@ void plan(const std::string plannerName)
     ma_si->lock();
     ma_pdef->lock();
 
+    // set the planner allocator for the multi-agent planner
+    ompl::base::PlannerAllocator allocator = myDemoPlannerAllocator;
+    ma_si->setPlannerAllocator(allocator);
+
     if (plannerName == "PP")
     {
         // plan for all agents using a prioritized planner (PP)
@@ -303,8 +317,6 @@ void plan(const std::string plannerName)
             planner->printConstraintTree(MyFile2);
         }
     }
-    
-    
 }
 
 int main(int /*argc*/, char ** /*argv*/)

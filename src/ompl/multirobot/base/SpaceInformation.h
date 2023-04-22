@@ -38,6 +38,7 @@
 #define OMPL_MULTIROBOT_SPACE_INFORMATION_
 
 #include "ompl/base/SpaceInformation.h"
+#include "ompl/base/Planner.h"
 
 namespace ompl
 {
@@ -94,6 +95,16 @@ namespace ompl
                     individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
                 }
 
+                virtual ompl::base::PlannerPtr allocatePlannerForIndividual(const unsigned int index) const
+                {
+                    return pa_(individuals_[index]);
+                }
+
+                void setPlannerAllocator(const ompl::base::PlannerAllocator &pa)
+                {
+                    pa_ = pa;
+                }
+
                 /** \brief Get a specific subspace from the compound state space */
                 const ompl::base::SpaceInformationPtr &getIndividual(unsigned int index) const;
 
@@ -117,6 +128,9 @@ namespace ompl
             protected:
                 /** \brief The individual space informations that make up the multi-agent state space */
                 std::vector<ompl::base::SpaceInformationPtr> individuals_;
+
+                /** \brief The planner allocator for the system -- responsible for providing single-agent PlannerPtr's to the multi-agent planners */
+                ompl::base::PlannerAllocator pa_;
 
                 /** \brief The number of indivudals in the multi-agent state space */
                 unsigned int individualCount_{0u};
