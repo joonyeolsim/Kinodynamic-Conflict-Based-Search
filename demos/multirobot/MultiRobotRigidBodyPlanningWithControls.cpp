@@ -187,7 +187,7 @@ void myDemoPropagateFunction(const ob::State *start, const oc::Control *control,
 // Providing this function to the multi-agent space information will let you use any of them
 ompl::base::PlannerPtr myDemoPlannerAllocator(const ompl::base::SpaceInformationPtr &si)
 {
-    const oc::SpaceInformationPtr siC = std::static_pointer_cast<ompl::control::SpaceInformation>(si); // dynamic
+    const oc::SpaceInformationPtr siC = std::static_pointer_cast<ompl::control::SpaceInformation>(si);
     ompl::base::PlannerPtr planner = std::make_shared<oc::RRT>(siC);
     return planner;
 }
@@ -323,7 +323,7 @@ int main(int /*argc*/, char ** /*argv*/)
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    std::string plannerName = "K-CBS";
+    std::string plannerName = "PP";
     // std::string plannerName = "PP";
     plan(plannerName);
 

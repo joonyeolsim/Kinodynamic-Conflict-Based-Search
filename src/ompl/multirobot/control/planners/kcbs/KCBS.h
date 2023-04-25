@@ -39,7 +39,7 @@
 
 #include "ompl/multirobot/control/planners/PlannerIncludes.h"
 #include "ompl/control/PlannerData.h"
-#include "ompl/base/Planner.h"
+#include "ompl/util/Exception.h"
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/property_map/transform_value_property_map.hpp>

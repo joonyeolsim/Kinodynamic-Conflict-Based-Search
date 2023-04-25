@@ -81,7 +81,8 @@ namespace ompl
                 /** \brief Free the memory allocated by this planner */
                 void freeMemory();
 
-                ompl::base::PlannerPtr solver_;
+                /** \brief An ordered container containing a solver for every individual */
+                std::vector<ompl::base::PlannerPtr> llSolvers_;
 
                 /** \brief The base::SpaceInformation cast as control::SpaceInformation, for convenience */
                 const SpaceInformation *siC_;

@@ -81,13 +81,16 @@ void ompl::multirobot::control::KCBS::setup()
         }
     }
 
+    if (!siC_->hasPlannerAllocator())
+        throw Exception(getName().c_str(), "No PlannerAllocator provided!");
+
     // setup low-level planners
     llSolvers_.resize(siC_->getIndividualCount());
     for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
     {
         llSolvers_[r] = siC_->allocatePlannerForIndividual(r);
         llSolvers_[r]->setProblemDefinition(pdef_->getIndividual(r));
-        // lSolvers_[r]->specs_.approximateSolutions = false; // TO-DO: this will throw an error but it would be nice to set this to false
+        // llSolvers_[r]->specs_.approximateSolutions = false; // TO-DO: this will throw an error but it would be nice to set this to false
     }
 
     // setup conflictCounter_

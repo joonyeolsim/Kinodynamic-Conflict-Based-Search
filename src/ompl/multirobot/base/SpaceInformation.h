@@ -105,6 +105,11 @@ namespace ompl
                     pa_ = pa;
                 }
 
+                bool hasPlannerAllocator() const
+                {
+                    return (pa_) ? true : false;
+                }
+
                 /** \brief Get a specific subspace from the compound state space */
                 const ompl::base::SpaceInformationPtr &getIndividual(unsigned int index) const;
 

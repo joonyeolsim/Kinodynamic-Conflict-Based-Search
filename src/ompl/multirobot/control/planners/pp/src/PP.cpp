@@ -39,7 +39,7 @@
 
 
 ompl::multirobot::control::PP::PP(const ompl::multirobot::control::SpaceInformationPtr &si, ompl::base::PlannerPtr solver)
-  : ompl::multirobot::base::Planner(si, "PP"), solver_(solver)
+  : ompl::multirobot::base::Planner(si, "PP")
 {
     siC_ = si.get();
     // specs_.approximateSolutions = true;
@@ -67,22 +67,24 @@ void ompl::multirobot::control::PP::clear()
 void ompl::multirobot::control::PP::setup()
 {
     base::Planner::setup();
-    // if (!solver_)
-    // {
-    //     OMPL_WARN("%s: No solver provided... Using RRT", getName().c_str());
-    //     std::cout << si_->getIndividual(0) << std::endl;
-    //     std::cout << pdef_->getIndividualCount() << std::endl;
-    //     solver_ = std::make_shared<ompl::control::RRT>(si_->getIndividual(0));
-    //     solver_->setProblemDefinition(pdef_->getIndividual(0));
-    // }
+    // setup low-level planners
+    if (!siC_->hasPlannerAllocator())
+        throw Exception(getName().c_str(), "No PlannerAllocator provided!");
+
+    llSolvers_.resize(siC_->getIndividualCount());
+    for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
+    {
+        llSolvers_[r] = siC_->allocatePlannerForIndividual(r);
+        llSolvers_[r]->setProblemDefinition(pdef_->getIndividual(r));
+        // llSolvers_[r]->specs_.approximateSolutions = false; // TO-DO: this will throw an error but it would be nice to set this to false
+    }
 }
 
 void ompl::multirobot::control::PP::freeMemory()
 {
-    if (solver_)
+    for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
     {
-        solver_->clear();
-        solver_.reset();
+        llSolvers_[r]->clear();
     }
 }
 
@@ -112,13 +114,11 @@ ompl::base::PlannerStatus ompl::multirobot::control::PP::solve(const ompl::base:
         /* plan for individual r while treating individuals 1, ..., r-1 as dynamic obstacles 
             Note: It is theoretically possible to use any planner from ompl::control. We only use RRT for now.
         */
-        solver_ = std::make_shared<ompl::control::RRT>(siC_->getIndividual(r));
-        solver_->setProblemDefinition(pdef_->getIndividual(r));
-        bool solved = solver_->solve(ptc);
+        bool solved = llSolvers_[r]->solve(ptc);
         if (solved)
         {
             // add the path to the plan
-            auto path = std::make_shared<ompl::control::PathControl>(*solver_->getProblemDefinition()->getSolutionPath()->as<ompl::control::PathControl>());
+            auto path = std::make_shared<ompl::control::PathControl>(*llSolvers_[r]->getProblemDefinition()->getSolutionPath()->as<ompl::control::PathControl>());
             addPathAsDynamicObstacles(r, path);
             plan->as<PlanControl>()->append(path);
         }
@@ -128,9 +128,6 @@ ompl::base::PlannerStatus ompl::multirobot::control::PP::solve(const ompl::base:
             pdef_->addSolutionPlan(plan, true, si_->getIndividualCount() - r, getName());
             return {true, true};
         }
-        // free memory of previous planning instance
-        solver_->clear();
-        solver_.reset();
     }
     // add plan to problem definition
     pdef_->addSolutionPlan(plan, false, false, getName());
