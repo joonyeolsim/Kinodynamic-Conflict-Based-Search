@@ -42,15 +42,6 @@ ompl::multirobot::control::PP::PP(const ompl::multirobot::control::SpaceInformat
   : ompl::multirobot::base::Planner(si, "PP")
 {
     siC_ = si.get();
-    // specs_.approximateSolutions = true;
-    // specs_.directed = true;
-
-    // Planner::declareParam<double>("range", this, &RRT::setRange, &RRT::getRange, "0.:1.:10000.");
-    // Planner::declareParam<double>("goal_bias", this, &RRT::setGoalBias, &RRT::getGoalBias, "0.:.05:1.");
-    // Planner::declareParam<bool>("intermediate_states", this, &RRT::setIntermediateStates, &RRT::getIntermediateStates,
-    //                             "0,1");
-
-    // addIntermediateStates_ = addIntermediateStates;
 }
 
 ompl::multirobot::control::PP::~PP()
@@ -85,6 +76,7 @@ void ompl::multirobot::control::PP::freeMemory()
     for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
     {
         llSolvers_[r]->clear();
+        siC_->getIndividual(r)->clearDynamicObstacles();
     }
 }
 
@@ -114,8 +106,8 @@ ompl::base::PlannerStatus ompl::multirobot::control::PP::solve(const ompl::base:
         /* plan for individual r while treating individuals 1, ..., r-1 as dynamic obstacles 
             Note: It is theoretically possible to use any planner from ompl::control. We only use RRT for now.
         */
-        bool solved = llSolvers_[r]->solve(ptc);
-        if (solved)
+        ompl::base::PlannerStatus solved = llSolvers_[r]->solve(ptc);
+        if (solved == ompl::base::PlannerStatus::EXACT_SOLUTION)
         {
             // add the path to the plan
             auto path = std::make_shared<ompl::control::PathControl>(*llSolvers_[r]->getProblemDefinition()->getSolutionPath()->as<ompl::control::PathControl>());
@@ -124,7 +116,7 @@ ompl::base::PlannerStatus ompl::multirobot::control::PP::solve(const ompl::base:
         }
         else
         {
-            // failed to find a plan -- return approximate solution
+            // failed to find a path for individual r -- return approximate solution
             pdef_->addSolutionPlan(plan, true, si_->getIndividualCount() - r, getName());
             return {true, true};
         }

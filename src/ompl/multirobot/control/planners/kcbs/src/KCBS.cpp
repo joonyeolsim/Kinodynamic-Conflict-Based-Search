@@ -279,12 +279,13 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
 
     // attempt to find another trajectory
     // if successful, add the new plan to node prior to exit
+    ompl::base::PlannerStatus solved;
     if (retry)
-        node->getLowLevelSolver()->solve(llSolveTime_);
+        solved = node->getLowLevelSolver()->solve(llSolveTime_);
     else
-        llSolvers_[robot]->solve(llSolveTime_);
+        solved = llSolvers_[robot]->solve(llSolveTime_);
     
-    if (llSolvers_[robot]->getProblemDefinition()->hasExactSolution())
+    if (solved == ompl::base::PlannerStatus::EXACT_SOLUTION)
     {
         PlanControlPtr new_plan = std::make_shared<PlanControl>(si_);
         auto new_path = std::make_shared<ompl::control::PathControl>(*llSolvers_[robot]->getProblemDefinition()->getSolutionPath()->as<ompl::control::PathControl>());
