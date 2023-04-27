@@ -102,7 +102,7 @@ namespace ompl
             }
 
             /** \brief method to add a dynamic obstacle */
-            void addDynamicObstacle(const double time, const SpaceInformationPtr si, const State* state)
+            void addDynamicObstacle(const double time, const SpaceInformationPtr si, State* state)
             {
                 stateValidityChecker_->addDynamicObstacle(time, si, state);
             }

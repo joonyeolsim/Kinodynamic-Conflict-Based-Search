@@ -65,7 +65,13 @@ namespace ompl
                 /** \brief Construct a multi-agent space information from a list of indivudal space informations */
                 SpaceInformation(const std::vector<ompl::control::SpaceInformation> &individuals);
 
-                virtual ~SpaceInformation() = default;
+                ~SpaceInformation() override
+                {
+                    for (auto &siC: individuals_)
+                        siC.reset();
+                    if (systemMerger_)
+                        systemMerger_.reset();
+                }
 
                 /** \brief Adds an individual as part of the multi-agent state space. */
                 void addIndividual(const ompl::control::SpaceInformationPtr &individual);
@@ -82,7 +88,7 @@ namespace ompl
                 }
 
                 /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
-                void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const override
+                void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, ompl::base::State* state, const double time) const override
                 {
                     individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
                 }

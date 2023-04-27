@@ -41,10 +41,8 @@ ompl::multirobot::control::KCBS::KCBS(const ompl::multirobot::control::SpaceInfo
 {
     siC_ = si.get();
 
-    // Planner::declareParam<double>("range", this, &RRT::setRange, &RRT::getRange, "0.:1.:10000.");
-    // Planner::declareParam<double>("goal_bias", this, &RRT::setGoalBias, &RRT::getGoalBias, "0.:.05:1.");
-    // Planner::declareParam<bool>("intermediate_states", this, &RRT::setIntermediateStates, &RRT::getIntermediateStates,
-    //                             "0,1");
+    Planner::declareParam<double>("low_level_solve_time", this, &KCBS::setLowLevelSolveTime, &KCBS::getLowLevelSolveTime, "0.:1.:10000000.");
+    Planner::declareParam<double>("merge_bound", this, &KCBS::setMergeBound, &KCBS::getMergeBound, "0:1:10000000");
 }
 
 ompl::multirobot::control::KCBS::~KCBS()
@@ -61,8 +59,17 @@ void ompl::multirobot::control::KCBS::clear()
 void ompl::multirobot::control::KCBS::freeMemory()
 {
     // free memory of every node
-    // for (auto n: allNodesSet_)
-        // std::cout << "here: " << n->getCost() << std::endl;
+    for (auto n: allNodesSet_)
+        n.reset();
+    // free memory of every low-level solver
+    for (auto &p: llSolvers_)
+        p.reset();
+    // free memory of all the dynamic obstaces
+    for (unsigned int r = 0; r < siC_->getIndividualCount(); r++)
+        siC_->getIndividual(r)->clearDynamicObstacles();
+    // free memory of the merged planner (if it exists)
+    if (mergerPlanner_)
+        mergerPlanner_.reset();
 }
 
 void ompl::multirobot::control::KCBS::setup()
@@ -261,7 +268,7 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     {
         for (unsigned int k = 0; k < c->timeSteps_.size(); k++)
         {
-            const ompl::base::State* state =  c->constrainingSiC_->cloneState(c->constrainingStates_[k]);
+            ompl::base::State* state =  c->constrainingSiC_->cloneState(c->constrainingStates_[k]);
             const double time = c->timeSteps_[k] * siC_->getIndividual(robot)->getPropagationStepSize();
             siC_->getIndividual(robot)->addDynamicObstacle(time, c->constrainingSiC_, state);
         }

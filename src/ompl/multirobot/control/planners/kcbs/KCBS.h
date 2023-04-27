@@ -103,6 +103,9 @@ namespace ompl
                 /** Set the low-level solve time. */
                 void setLowLevelSolveTime(const double t) {llSolveTime_ = t;};
 
+                /** Get the low-level solve time. */
+                double getLowLevelSolveTime() const {return llSolveTime_;};
+
                 /** \brief Output the constraint tree in graphViz format. */
                 void printConstraintTree(std::ostream &out)
                 {
@@ -118,10 +121,10 @@ namespace ompl
                 /** \brief A conflict occurs when robot1_ located at state1_ and robot2_ located at state2_ collide at timeStep_ */
                 struct Conflict
                 {
-                    Conflict(unsigned int r1, unsigned int r2, unsigned int step, const ompl::base::State* st1, const ompl::base::State* st2):
+                    Conflict(unsigned int r1, unsigned int r2, unsigned int step, ompl::base::State* st1, ompl::base::State* st2):
                         robots_{r1, r2}, states_{st1, st2}, timeStep_(step) {}
                     const unsigned int robots_[2];
-                    const ompl::base::State* states_[2];
+                    ompl::base::State* states_[2];
                     const unsigned int timeStep_;
                 };
 
@@ -136,10 +139,16 @@ namespace ompl
                     Constraint(int r): constrainedRobot_(r), constrainingSiC_(nullptr), timeSteps_(), constrainingStates_() {}
                     Constraint(int r, ompl::control::SpaceInformationPtr otherSiC): 
                         constrainedRobot_(r), constrainingSiC_(otherSiC), timeSteps_(), constrainingStates_() {}
+                    ~Constraint()
+                    {
+                        constrainingSiC_.reset();
+                        // for (auto &st: constrainingStates_)
+                        //     constrainingSiC_->freeState(st);
+                    }
                     unsigned int constrainedRobot_;
                     ompl::control::SpaceInformationPtr constrainingSiC_;
                     std::vector<int> timeSteps_;
-                    std::vector<const ompl::base::State*> constrainingStates_;
+                    std::vector<ompl::base::State*> constrainingStates_;
                 };
 
                 /// @cond IGNORE
@@ -157,6 +166,16 @@ namespace ompl
                     Node(const PlanControlPtr plan): plan_(plan), parent_(nullptr), constraint_(nullptr), 
                         cost_(plan->length()), name_(generateRandomName()), id_(-1), llSolver_(nullptr) {};
 
+                    ~Node()
+                    {
+                        plan_.reset();
+                        parent_.reset();
+                        constraint_.reset();
+                        if (llSolver_)
+                            llSolver_.reset();
+
+                    }
+
                     void setPlan(const PlanControlPtr &plan) {plan_ = plan;};
 
                     void setParent(const NodePtr &p) {parent_ = p;};
@@ -168,8 +187,6 @@ namespace ompl
                     void setID(const int id) {id_ = id;};
 
                     void setLowLevelSolver(ompl::base::PlannerPtr &planner) {llSolver_ = planner;};
-
-                    // void setPlannerData(ompl::control::PlannerData* data) {data_ = data;};
 
                     const PlanControlPtr &getPlan() const {return plan_;};
 

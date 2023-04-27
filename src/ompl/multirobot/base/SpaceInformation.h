@@ -64,7 +64,11 @@ namespace ompl
                 /** \brief Construct a multi-agent space information from a list of indivudal space informations */
                 SpaceInformation(const std::vector<ompl::base::SpaceInformation> &individuals);
 
-                virtual ~SpaceInformation() = default;
+                virtual ~SpaceInformation()
+                {
+                    for (auto &si: individuals_)
+                        si.reset();
+                }
 
                 /** \brief Cast this instance to a desired type. */
                 template <class T>
@@ -90,7 +94,7 @@ namespace ompl
                 void addIndividual(const ompl::base::SpaceInformationPtr &individual);
 
                 /** \brief Adds a dynamic obstacle for `individual1` where `individual2` is located at `state` at some `time'. */
-                virtual void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, const ompl::base::State* state, const double time) const
+                virtual void addDynamicObstacleForIndividual(const unsigned int individual1, const unsigned int individual2, ompl::base::State* state, const double time) const
                 {
                     individuals_[individual1]->addDynamicObstacle(time, getIndividual(individual2), state);
                 }

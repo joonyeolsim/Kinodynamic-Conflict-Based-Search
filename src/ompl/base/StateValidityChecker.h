@@ -159,17 +159,14 @@ namespace ompl
             }
 
             /** \brief Add a dynamic obstacle */
-            void addDynamicObstacle(const double time, const SpaceInformationPtr &si, const State* state)
+            void addDynamicObstacle(const double time, const SpaceInformationPtr &si, State* state)
             {
                 int key = std::round(time * scalingFactor_);
                 dynObstacles_[key].push_back(std::make_pair(si, state));
             }
 
             /** \brief clear the dynamicObstacle map */
-            void clearDynamicObstacles()
-            {
-                dynObstacles_.clear();
-            }
+            void clearDynamicObstacles();
 
             /** \brief Return true if the state \e state is valid. In addition, set \e dist to the distance to the
                nearest
@@ -225,7 +222,7 @@ namespace ompl
             StateValidityCheckerSpecs specs_;
 
             /** \brief A hash table that maps time steps (keys) to the values (states) that must be accounted for inside isValid() */
-            std::unordered_map<int, std::vector<std::pair<const SpaceInformationPtr,const State*>> > dynObstacles_;
+            std::unordered_map<int, std::vector<std::pair<const SpaceInformationPtr, State*>> > dynObstacles_;
 
             /** the scaling factor for dynamic obstacles, this will work in most */
             int scalingFactor_ = 1e5;

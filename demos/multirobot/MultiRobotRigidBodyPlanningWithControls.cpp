@@ -213,7 +213,7 @@ void plan(const std::string plannerName)
         std::string name = "Robot " + std::to_string(i);
 
         // construct the state space we are planning in
-        auto space(std::make_shared<ob::SE2StateSpace>());
+        auto space = std::make_shared<ob::SE2StateSpace>();
 
         // set the bounds for the R^2 part of SE(2)
         ob::RealVectorBounds bounds(2);
@@ -233,7 +233,7 @@ void plan(const std::string plannerName)
         cspace->setBounds(cbounds);
 
         // construct an instance of  space information from this control space
-        auto si(std::make_shared<oc::SpaceInformation>(space, cspace));
+        auto si = std::make_shared<oc::SpaceInformation>(space, cspace);
 
         // set state validity checking for this space
         si->setStateValidityChecker(std::make_shared<myDemoStateValidityChecker>(si));
@@ -257,7 +257,7 @@ void plan(const std::string plannerName)
         start[2] = 0.0;
 
         // create a problem instance
-        auto pdef(std::make_shared<ob::ProblemDefinition>(si));
+        auto pdef = std::make_shared<ob::ProblemDefinition>(si);
 
         // set the start and goal states
         pdef->addStartState(start);
@@ -316,6 +316,7 @@ void plan(const std::string plannerName)
             std::ofstream MyFile2("tree.txt");
             planner->printConstraintTree(MyFile2);
         }
+        // planner.reset();
     }
 }
 
@@ -323,7 +324,7 @@ int main(int /*argc*/, char ** /*argv*/)
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    std::string plannerName = "PP";
+    std::string plannerName = "K-CBS";
     // std::string plannerName = "PP";
     plan(plannerName);
 
