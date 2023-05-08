@@ -54,13 +54,23 @@ void ompl::multirobot::control::KCBS::clear()
 {
     base::Planner::clear();
     freeMemory();
+    numNodesExpanded_ = 0;
 }
 
 void ompl::multirobot::control::KCBS::freeMemory()
 {
+    // clear the priority queue
+    while (!pq_.empty())
+    {
+        NodePtr n = pq_.top();
+        pq_.pop();
+        n.reset();
+    }
+    pq_ = std::priority_queue<NodePtr, std::vector<NodePtr>, NodeCompare>();
     // free memory of every node
     for (auto n: allNodesSet_)
         n.reset();
+    allNodesSet_.clear();
     // free memory of every low-level solver
     for (auto &p: llSolvers_)
         p.reset();
@@ -70,6 +80,11 @@ void ompl::multirobot::control::KCBS::freeMemory()
     // free memory of the merged planner (if it exists)
     if (mergerPlanner_)
         mergerPlanner_.reset();
+    // reset conflict counter
+    conflictCounter_.clear();
+    // clear the boost graph
+    tree_.clear();
+    treeMap_.clear();
 }
 
 void ompl::multirobot::control::KCBS::setup()
