@@ -48,6 +48,7 @@
 #include <queue>
 #include <map>
 #include <unordered_set>
+#include <chrono>
 
 
 namespace ompl
@@ -99,6 +100,12 @@ namespace ompl
                 void setMergeBound(unsigned int b) {mergeBound_ = b;};
 
                 unsigned int getMergeBound() const {return mergeBound_;};
+
+                unsigned int getNumberOfNodesExpanded() const {return numNodesExpanded_;};
+
+                unsigned int getNumberOfApproximateSolutions() const {return numApproxSolutions_;};
+
+                const double getRootSolveTime() const {return rootSolveTime_;};
 
                 /** Set the low-level solve time. */
                 void setLowLevelSolveTime(const double t) {llSolveTime_ = t;};
@@ -341,6 +348,10 @@ namespace ompl
 
                 /** \brief The number of nodes expanded during the search. */
                 unsigned int numNodesExpanded_;
+
+                unsigned int numApproxSolutions_;
+
+                double rootSolveTime_;
 
                 /** \brief Another instance of K-CBS for solving the merged problem -- not always used but saved for memory purposes. */
                 KCBSPtr mergerPlanner_{nullptr};

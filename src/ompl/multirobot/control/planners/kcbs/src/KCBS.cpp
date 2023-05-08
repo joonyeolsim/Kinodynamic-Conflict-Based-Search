@@ -37,7 +37,7 @@
 #include "ompl/multirobot/control/planners/kcbs/KCBS.h"
 
 ompl::multirobot::control::KCBS::KCBS(const ompl::multirobot::control::SpaceInformationPtr &si): 
-    ompl::multirobot::base::Planner(si, "K-CBS"), llSolveTime_(1.), mergeBound_(std::numeric_limits<int>::max()), numNodesExpanded_(0)
+    ompl::multirobot::base::Planner(si, "K-CBS"), llSolveTime_(1.), mergeBound_(std::numeric_limits<int>::max()), numNodesExpanded_(0), numApproxSolutions_(0), rootSolveTime_(-1)
 {
     siC_ = si.get();
 
@@ -55,6 +55,8 @@ void ompl::multirobot::control::KCBS::clear()
     base::Planner::clear();
     freeMemory();
     numNodesExpanded_ = 0;
+    numApproxSolutions_ = 0;
+    rootSolveTime_ = -1;
 }
 
 void ompl::multirobot::control::KCBS::freeMemory()
@@ -316,6 +318,7 @@ void ompl::multirobot::control::KCBS::attemptReplan(const unsigned int robot, No
     }
     else
     {
+        numApproxSolutions_ += 1;
         // save the planner prior to exit only if planner not already saved
         if (!retry)
         {
@@ -334,6 +337,7 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
     OMPL_INFORM("%s: Starting planning. ", getName().c_str());
 
     // create root node of constraint tree with an initial path for every individual
+    auto start = std::chrono::high_resolution_clock::now();
     PlanControlPtr initalPlan = std::make_shared<PlanControl>(si_);
     for (auto itr = llSolvers_.begin(); itr != llSolvers_.end(); itr++) 
     {
@@ -353,6 +357,10 @@ ompl::base::PlannerStatus ompl::multirobot::control::KCBS::solve(const ompl::bas
             return {false, false};
         }
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    double duration_s = (duration_ms.count() * 0.001);
+    rootSolveTime_ = duration_s;
 
     // create root node
     NodePtr root = std::make_shared<Node>(initalPlan);
