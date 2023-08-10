@@ -74,6 +74,11 @@ namespace ompl
                 /** \brief Copy constructor */
                 PlanControl(const PlanControl &plan);
 
+                std::vector<ompl::control::PathControlPtr> getPaths() const
+                {
+                    return paths_;
+                }
+
                 // /** \brief Construct a path instance from a single state */
                 // PathGeometric(const base::SpaceInformationPtr &si, const base::State *state);
 

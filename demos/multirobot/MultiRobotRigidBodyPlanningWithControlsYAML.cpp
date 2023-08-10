@@ -46,11 +46,15 @@
 #include <ompl/base/goals/GoalRegion.h>
 
 #include <ompl/config.h>
+#include <yaml-cpp/yaml.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <utility>
 #include <unordered_map>
+#include <chrono>
 
+using namespace std;
 namespace omrb = ompl::multirobot::base;
 namespace omrc = ompl::multirobot::control;
 namespace ob = ompl::base;
@@ -67,6 +71,7 @@ so that heterogeneous robots can be properly accounted for (see the example belo
 time-dependence is handled generically within OMPL. Please see ob::StateValidityChecker::isValid(const State *state, const double time) 
 for details.
 */
+double robotRadius;
 class myDemoStateValidityChecker: public ob::StateValidityChecker
 {
 public:
@@ -108,8 +113,8 @@ public:
 
         // one must code required logic to figure out if robot1 at state1 collides with robot2 at state2
         // this example assumes all robots are disks in R^2 of varying sizes.
-        double rad1 = radii_.at(robot1) + 0.1; // safety criterion
-        double rad2 = radii_.at(robot2) + 0.1; // safety criterion
+        double rad1 = robotRadius + 0.1; // safety criterion
+        double rad2 = robotRadius + 0.1; // safety criterion
 
         const double* robot1_pos = robot1_state->as<ob::RealVectorStateSpace::StateType>(0)->values;
         const double* robot2_pos = robot2_state->as<ob::RealVectorStateSpace::StateType>(0)->values;
@@ -180,8 +185,7 @@ void myDemoPropagateFunction(const ob::State *start, const oc::Control *control,
     result->as<ob::SE2StateSpace::StateType>()->setXY(
         pos[0] + ctrl[0] * duration * cos(rot),
         pos[1] + ctrl[0] * duration * sin(rot));
-    result->as<ob::SE2StateSpace::StateType>()->setYaw(
-        rot    + ctrl[1] * duration);
+    result->as<ob::SE2StateSpace::StateType>()->setYaw(rot + ctrl[1] * duration);
 }
 
 // K-CBS and PP both work for multiple type of low-level planners. 
@@ -195,41 +199,57 @@ ompl::base::PlannerPtr myDemoPlannerAllocator(const ompl::base::SpaceInformation
 
 void plan(const std::string plannerName)
 {
+    std::string fileName = "../../benchmark/OpenEnv/OpenEnv_5_0.yaml";
+    YAML::Node config = YAML::LoadFile(fileName);
+
+    auto robotNum = config["robotNum"].as<int>();
+    auto startPoints = config["startPoints"].as<vector<vector<double>>>();
+    auto goalPoints = config["goalPoints"].as<vector<vector<double>>>();
+    auto dimension = config["dimension"].as<int>();
+    auto spaceLimit = config["spaceLimit"].as<vector<double>>();
+    robotRadius = config["robotRadii"].as<vector<double>>()[0];
+    auto lambdaFactor = config["lambdaFactor"].as<double>();
+    auto maxVelocity = config["maxVelocity"].as<double>();
+    auto maxExpandDistance = config["maxExpandDistance"].as<double>();
+    auto maxIteration = config["maxIteration"].as<int>();
+    auto rectangleObstacles = config["rectangleObstacles"].as<vector<vector<double>>>();
     // create start and goals for every robot
-    std::unordered_map<std::string, std::pair<int, int>> start_map{ {"Robot 0", {1, 1}}, 
-                                                                    {"Robot 1", {5, 5}}, 
-                                                                    {"Robot 2", {8, 8}} };
-    std::unordered_map<std::string, std::pair<int, int>> goal_map{  {"Robot 0", {8, 7}}, 
-                                                                    {"Robot 1", {2, 1}}, 
-                                                                    {"Robot 2", {5, 6}} };
+//    std::unordered_map<std::string, std::pair<int, int>> start_map{ {"Robot 0", {1, 1}},
+//                                                                    {"Robot 1", {5, 5}},
+//                                                                    {"Robot 2", {8, 8}} };
+//    std::unordered_map<std::string, std::pair<int, int>> goal_map{  {"Robot 0", {8, 7}},
+//                                                                    {"Robot 1", {2, 1}},
+//                                                                    {"Robot 2", {5, 6}} };
 
     // construct an instance of multi-robot space information
     auto ma_si(std::make_shared<omrc::SpaceInformation>());
     auto ma_pdef(std::make_shared<omrb::ProblemDefinition>(ma_si));
+    ma_pdef->unlock();
 
     // construct four individuals that operate in SE3
-    for (int i = 0; i < 3; i++) 
+    for (int i = 0; i < robotNum; i++)
     {
         // give robot a name 
-        std::string name = "Robot " + std::to_string(i);
+        string name = "Robot " + std::to_string(i);
 
         // construct the state space we are planning in
         auto space = std::make_shared<ob::SE2StateSpace>();
 
         // set the bounds for the R^2 part of SE(2)
-        ob::RealVectorBounds bounds(2);
+        ob::RealVectorBounds bounds(dimension);
         bounds.setLow(0);
-        bounds.setHigh(10);
+        for (int j = 0; j < dimension; j++)
+            bounds.setHigh(j,spaceLimit[j]);
 
         space->setBounds(bounds); 
 
         // create a control space
-        auto cspace(std::make_shared<oc::RealVectorControlSpace>(space, 2));
+        auto cspace(std::make_shared<oc::RealVectorControlSpace>(space, dimension));
 
         // set the bounds for the control space
-        ob::RealVectorBounds cbounds(2);
-        cbounds.setLow(-0.3);
-        cbounds.setHigh(0.3);
+        ob::RealVectorBounds cbounds(dimension);
+        cbounds.setLow(-2.0);
+        cbounds.setHigh(2.0);
 
         cspace->setBounds(cbounds);
 
@@ -243,7 +263,7 @@ void plan(const std::string plannerName)
         si->setStatePropagator(myDemoPropagateFunction);
 
         // it is highly recommended that all robots use the same propogation step size
-        si->setPropagationStepSize(0.1);
+        si->setPropagationStepSize(robotRadius);
 
         // set this to remove the warning
         si->setMinMaxControlDuration(1, 10);
@@ -253,8 +273,9 @@ void plan(const std::string plannerName)
 
         // create a start state
         ob::ScopedState<ob::SE2StateSpace> start(space);
-        start[0] = start_map.at(name).first;
-        start[1] = start_map.at(name).second;
+        for (int j = 0; j < dimension; j++){
+            start->as<ob::RealVectorStateSpace::StateType>(0)->values[j] = startPoints[i][j];
+        }
         start[2] = 0.0;
 
         // create a problem instance
@@ -262,7 +283,7 @@ void plan(const std::string plannerName)
 
         // set the start and goal states
         pdef->addStartState(start);
-        pdef->setGoal(std::make_shared<myDemoGoalCondition>(si, goal_map.at(name)));
+        pdef->setGoal(std::make_shared<myDemoGoalCondition>(si, pair<int, int>(goalPoints[i][0], goalPoints[i][1])));
 
         // add the individual information to the multi-robot SpaceInformation and ProblemDefinition
         ma_si->addIndividual(si);
@@ -286,10 +307,25 @@ void plan(const std::string plannerName)
 
         if (solved)
         {
-            std::cout << "Found solution!" << std::endl;
-            omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
-            std::ofstream MyFile("plan.txt");
-            solution->as<omrc::PlanControl>()->printAsMatrix(std::cout, "Robot");
+            std::ofstream fout("../../solutions/OpenEnv_5_0_solution.yaml");
+            // Save Solution in YAML format
+            YAML::Emitter out;
+            out << YAML::BeginSeq;
+            auto solution = ma_pdef->getSolutionPlan()->as<omrc::PlanControl>()->getPaths();
+            for (auto& path : solution) {
+                out << YAML::BeginSeq;
+                int time = 0;
+                for (auto &state : path->getStates()) {
+                    auto x = state->as<ob::SE2StateSpace::StateType>()->getX();
+                    auto y = state->as<ob::SE2StateSpace::StateType>()->getY();
+                    out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
+                    time++;
+                }
+                out << YAML::EndSeq;
+            }
+            out << YAML::EndSeq;
+            fout << out.c_str() << endl;
+            std::cout << "PP Found solution!" << std::endl;
         }
     }
     else if (plannerName == "K-CBS")
@@ -310,12 +346,25 @@ void plan(const std::string plannerName)
         bool solved = planner->as<omrb::Planner>()->solve(30.0);
         if (solved)
         {
-            std::cout << "Found solution!" << std::endl;
-            omrb::PlanPtr solution = ma_pdef->getSolutionPlan();
-            std::ofstream MyFile("plan.txt");
-            solution->as<omrc::PlanControl>()->printAsMatrix(MyFile, "Robot");
-            std::ofstream MyFile2("tree.txt");
-            planner->printConstraintTree(MyFile2);
+            std::ofstream fout("../../solutions/OpenEnv_5_0_solution.yaml");
+            // Save Solution in YAML format
+            YAML::Emitter out;
+            out << YAML::BeginSeq;
+            auto solution = ma_pdef->getSolutionPlan()->as<omrc::PlanControl>()->getPaths();
+            for (auto& path : solution) {
+                out << YAML::BeginSeq;
+                int time = 0;
+                for (auto &state : path->getStates()) {
+                    auto x = state->as<ob::SE2StateSpace::StateType>()->getX();
+                    auto y = state->as<ob::SE2StateSpace::StateType>()->getY();
+                    out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
+                    time++;
+                }
+                out << YAML::EndSeq;
+            }
+            out << YAML::EndSeq;
+            fout << out.c_str() << endl;
+            std::cout << "K-CBS Found solution!" << std::endl;
         }
         // planner.reset();
     }
@@ -325,8 +374,8 @@ int main(int /*argc*/, char ** /*argv*/)
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    // std::string plannerName = "K-CBS";
-    std::string plannerName = "PP";
+       std::string plannerName = "K-CBS";
+    // std::string plannerName = "PP";
     plan(plannerName);
 
     return 0;
