@@ -258,6 +258,10 @@ namespace ompl
                     locked_ = true;
                 }
 
+                void unlock(){
+                    locked_ = false;
+                }
+
                 // /** \brief In the simplest case possible, we have a single
                 //     starting state and a single goal state.
 

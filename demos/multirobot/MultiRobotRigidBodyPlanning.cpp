@@ -38,7 +38,7 @@
 #include <ompl/multirobot/base/ProblemDefinition.h>
 #include <ompl/multirobot/geometric/planners/pp/PP.h>
 
-#include <ompl/base/spaces/SE3StateSpace.h>
+#include <ompl/base/spaces/SE2StateSpace.h>
 #include <ompl/base/spaces/RealVectorBounds.h>
 #include <ompl/base/ScopedState.h>
 
@@ -74,13 +74,13 @@ public:
     bool isValid(const ompl::base::State *state) const override
     {
         // cast the abstract state type to the type we expect
-        const auto *se3state = state->as<ob::SE3StateSpace::StateType>();
+        const auto *se3state = state->as<ob::SE2StateSpace::StateType>();
 
         // extract the first component of the state and cast it to what we expect
         const auto *pos = se3state->as<ob::RealVectorStateSpace::StateType>(0);
 
         // extract the second component of the state and cast it to what we expect
-        const auto *rot = se3state->as<ob::SO3StateSpace::StateType>(1);
+        const auto *rot = se3state->as<ob::SO2StateSpace::StateType>(1);
 
         // one must code required logic to figure out if state at pos & rot is valid.
 
@@ -116,10 +116,10 @@ void plan()
     for (int i = 0; i < 3; i++) 
     {
         // construct the state space we are planning in
-        auto space(std::make_shared<ob::SE3StateSpace>());
+        auto space(std::make_shared<ob::SE2StateSpace>());
 
         // set the bounds for the R^3 part of SE(3)
-        ob::RealVectorBounds bounds(3);
+        ob::RealVectorBounds bounds(2);
         bounds.setLow(-1);
         bounds.setHigh(1);
 

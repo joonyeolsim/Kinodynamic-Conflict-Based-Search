@@ -76,6 +76,11 @@ namespace ompl
                 /** \brief Copy constructor */
                 PlanGeometric(const PlanGeometric &plan);
 
+                std::vector<ompl::geometric::PathGeometricPtr> getPaths() const
+                {
+                    return paths_;
+                }
+
                 // /** \brief Construct a path instance from a single state */
                 // PathGeometric(const base::SpaceInformationPtr &si, const base::State *state);
 
