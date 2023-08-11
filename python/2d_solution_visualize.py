@@ -8,6 +8,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 
+parser.add_argument('-p', '--planner_name', type=str, help='The planner name')
 parser.add_argument('-b', '--basename', type=str, help='The basename for the environment')
 parser.add_argument('-n', '--num_of_robot', type=str, help='The number of robots')
 parser.add_argument('-c', '--test_count', type=str, help='The number of test count')
@@ -15,12 +16,13 @@ parser.add_argument('-c', '--test_count', type=str, help='The number of test cou
 args = parser.parse_args()
 
 # Access the arguments
+planner_name = args.planner_name
 basename = args.basename
 num_of_robot = args.num_of_robot
 test_count = args.test_count
 
 config_file = f"../benchmark/{basename}/{basename}_{num_of_robot}_{test_count}.yaml"
-solution_file = f"../solutions/{basename}_{num_of_robot}_{test_count}_solution.yaml"
+solution_file = f"../solutions/{planner_name}/{planner_name}_{basename}_{num_of_robot}_{test_count}_solution.yaml"
 
 # benchmark 파일
 with open(config_file, 'r') as stream:
@@ -112,6 +114,8 @@ colors = [
 
 # 로봇, 궤적, 시작점, 종료점 생성 및 초기화
 for i, path in enumerate(solution):
+    print(len(solution))
+    print(i, config['robotRadii'])
     robot = Circle((0, 0), config['robotRadii'][i], fill=False, color=colors[i])
     ax.add_patch(robot)
     robots.append(robot)

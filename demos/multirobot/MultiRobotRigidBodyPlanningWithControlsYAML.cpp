@@ -94,10 +94,10 @@ public:
 
         // one must code required logic to figure out if state at pos & rot is valid.
         // check if it is in area
-//        auto x = pos->values[0];
-//        auto y = pos->values[1];
-//        if (x - robotRadius < 0 || x + robotRadius > spaceLimit[0] || y - robotRadius < 0 || y + robotRadius > spaceLimit[1])
-//            return false;
+        auto x = pos->values[0];
+        auto y = pos->values[1];
+        if (x - robotRadius < 0 || x + robotRadius > spaceLimit[0] || y - robotRadius < 0 || y + robotRadius > spaceLimit[1])
+            return false;
 
 
         // this returns a value that is always true but uses the two variables we define, so we avoid compiler warnings
@@ -204,10 +204,9 @@ ompl::base::PlannerPtr myDemoPlannerAllocator(const ompl::base::SpaceInformation
     return planner;
 }
 
-void plan(const std::string plannerName)
+void plan(const std::string plannerName, const std::string baseName, const std::string numOfAgents, const std::string count)
 {
-    std::string fileName = "../../benchmark/OpenEnv/OpenEnv_10_0.yaml";
-    YAML::Node config = YAML::LoadFile(fileName);
+    YAML::Node config = YAML::LoadFile("../../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
 
     auto robotNum = config["robotNum"].as<int>();
     auto startPoints = config["startPoints"].as<vector<vector<double>>>();
@@ -311,10 +310,10 @@ void plan(const std::string plannerName)
         auto planner = std::make_shared<omrc::PP>(ma_si);
         planner->setProblemDefinition(ma_pdef); // be sure to set the problem definition
         bool solved = planner->as<omrb::Planner>()->solve(30.0);
-
+        string solutionFileName = "../../solutions/PP/PP_" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
         if (solved)
         {
-            std::ofstream fout("../../solutions/OpenEnv_5_0_solution.yaml");
+            std::ofstream fout(solutionFileName);
             // Save Solution in YAML format
             YAML::Emitter out;
             out << YAML::BeginSeq;
@@ -351,9 +350,10 @@ void plan(const std::string plannerName)
         planner->setLowLevelSolveTime(0.5);
 
         bool solved = planner->as<omrb::Planner>()->solve(30.0);
+        string solutionFileName = "../../solutions/KCBS/KCBS_" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
         if (solved)
         {
-            std::ofstream fout("../../solutions/OpenEnv_5_0_solution.yaml");
+            std::ofstream fout(solutionFileName);
             // Save Solution in YAML format
             YAML::Emitter out;
             out << YAML::BeginSeq;
@@ -377,13 +377,18 @@ void plan(const std::string plannerName)
     }
 }
 
-int main(int /*argc*/, char ** /*argv*/)
+int main(int argc, char* argv[])
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
+    std::vector<std::string> args(argv, argv + argc);
+
+    string baseName = args[1];
+    string numOfAgents = args[2];
+    string count = args[3];
 
     // std::string plannerName = "K-CBS";
-     std::string plannerName = "PP";
-    plan(plannerName);
+    std::string plannerName = "PP";
+    plan(plannerName, baseName, numOfAgents, count);
 
     return 0;
 }
