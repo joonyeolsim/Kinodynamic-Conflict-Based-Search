@@ -72,6 +72,7 @@ time-dependence is handled generically within OMPL. Please see ob::StateValidity
 for details.
 */
 double robotRadius;
+vector<double> spaceLimit;
 class myDemoStateValidityChecker: public ob::StateValidityChecker
 {
 public:
@@ -92,6 +93,12 @@ public:
         const auto *rot = se2state->as<ob::SO2StateSpace::StateType>(1);
 
         // one must code required logic to figure out if state at pos & rot is valid.
+        // check if it is in area
+//        auto x = pos->values[0];
+//        auto y = pos->values[1];
+//        if (x - robotRadius < 0 || x + robotRadius > spaceLimit[0] || y - robotRadius < 0 || y + robotRadius > spaceLimit[1])
+//            return false;
+
 
         // this returns a value that is always true but uses the two variables we define, so we avoid compiler warnings
         // return (const void*)rot != (const void*)pos;
@@ -199,14 +206,14 @@ ompl::base::PlannerPtr myDemoPlannerAllocator(const ompl::base::SpaceInformation
 
 void plan(const std::string plannerName)
 {
-    std::string fileName = "../../benchmark/OpenEnv/OpenEnv_5_0.yaml";
+    std::string fileName = "../../benchmark/OpenEnv/OpenEnv_10_0.yaml";
     YAML::Node config = YAML::LoadFile(fileName);
 
     auto robotNum = config["robotNum"].as<int>();
     auto startPoints = config["startPoints"].as<vector<vector<double>>>();
     auto goalPoints = config["goalPoints"].as<vector<vector<double>>>();
     auto dimension = config["dimension"].as<int>();
-    auto spaceLimit = config["spaceLimit"].as<vector<double>>();
+    spaceLimit = config["spaceLimit"].as<vector<double>>();
     robotRadius = config["robotRadii"].as<vector<double>>()[0];
     auto lambdaFactor = config["lambdaFactor"].as<double>();
     auto maxVelocity = config["maxVelocity"].as<double>();
@@ -374,8 +381,8 @@ int main(int /*argc*/, char ** /*argv*/)
 {
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-       std::string plannerName = "K-CBS";
-    // std::string plannerName = "PP";
+    // std::string plannerName = "K-CBS";
+     std::string plannerName = "PP";
     plan(plannerName);
 
     return 0;
