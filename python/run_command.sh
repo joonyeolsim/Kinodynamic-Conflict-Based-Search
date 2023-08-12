@@ -32,9 +32,9 @@ execute_with_timeout() {
 }
 
 # 환경 및 변수 설정
-ENVIRONMENTS=("OpenEnv" "ClutteredEnv")
+ENVIRONMENTS=("OpenEnv")
 VARIABLES_1=(5 10 15 20 25 30)
-COMMAND="../cmake-build-debug/ST_CBS"
+COMMAND="../cmake-build-debug/bin/demo_MultiRobotRigidBodyPlanningWithControlsYaml"
 
 # 각 환경과 변수를 사용하여 명령어 실행
 for env in "${ENVIRONMENTS[@]}"; do

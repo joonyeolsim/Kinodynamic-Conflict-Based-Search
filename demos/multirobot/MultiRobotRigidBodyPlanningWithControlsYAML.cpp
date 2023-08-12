@@ -374,7 +374,7 @@ void plan(const std::string plannerName, const std::string baseName, const std::
         double executionTime = (double) duration / 1e+9;
 
 
-        string solutionFileName = "../../solutions/KCBS/KCBS_" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+        string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
         if (solved)
         {
             std::ofstream fout(solutionFileName);
@@ -408,7 +408,7 @@ void plan(const std::string plannerName, const std::string baseName, const std::
             fout << out.c_str() << endl;
 
             // Save Sum of Space and Time Distances in CSV format
-            string csv_file_path = "../../raw_data/KCBS/KCBS_" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+            string csv_file_path = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
             std::ofstream csv_out(csv_file_path);
 
             // Assuming executionTime is some variable that holds the execution time
