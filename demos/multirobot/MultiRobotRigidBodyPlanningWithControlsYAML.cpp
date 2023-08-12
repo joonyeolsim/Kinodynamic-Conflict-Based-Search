@@ -368,7 +368,7 @@ void plan(const std::string plannerName, const std::string baseName, const std::
         // set the low-level solve time
         planner->setLowLevelSolveTime(0.5);
         auto start = std::chrono::high_resolution_clock::now();
-        bool solved = planner->as<omrb::Planner>()->solve(1.0);
+        bool solved = planner->as<omrb::Planner>()->solve(300);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
         double executionTime = (double) duration / 1e+9;
@@ -431,13 +431,19 @@ int main(int argc, char* argv[])
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
     std::vector<std::string> args(argv, argv + argc);
 
-    string baseName = args[1];
-    string numOfAgents = args[2];
-    string count = args[3];
+    vector<string> baseName = {"OpenEnv"};
+    vector<string> numOfAgents = {"5", "10", "15", "20", "25", "30"};
+    // vector string count 0 to 49
+    vector<string> count;
+    for (int i = 0; i < 50; i++)
+        count.push_back(to_string(i));
 
     std::string plannerName = "K-CBS";
     //std::string plannerName = "PP";
-    plan(plannerName, baseName, numOfAgents, count);
+    for (auto& b : baseName)
+        for (auto& n : numOfAgents)
+            for (auto& c : count)
+                plan(plannerName, b, n, c);
 
     return 0;
 }
