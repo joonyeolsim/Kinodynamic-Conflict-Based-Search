@@ -58,7 +58,6 @@ if (OMPL_BUILD_DEMOS)
     add_ompl_demo(demo_SpaceTimePlanning SpaceTimePlanning.cpp)
 
     find_package(yaml-cpp)
-    link_directories(/opt/homebrew/lib/)
     set_package_properties(yaml-cpp PROPERTIES
         URL "https://github.com/jbeder/yaml-cpp"
         PURPOSE "Used for parsing input data for the PlanarManipulator demo.")
