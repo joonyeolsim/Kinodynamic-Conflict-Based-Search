@@ -52,6 +52,7 @@
 #include <vector>
 #include <utility>
 #include <unordered_map>
+#include <cmath>
 #include <chrono>
 
 using namespace std;
@@ -73,11 +74,35 @@ for details.
 */
 double robotRadius;
 vector<double> spaceLimit;
+vector<vector<double>> rectangleObstacles;
 class myDemoStateValidityChecker: public ob::StateValidityChecker
 {
 public:
     myDemoStateValidityChecker(const ob::SpaceInformationPtr &si): ob::StateValidityChecker(si)
     {
+    }
+
+    bool isCollideAgent(double agent_x, double agent_y, double agent_r, double center_x, double center_y, double width, double height) const {
+        // 직사각형의 영역을 구한다
+        double rectLeft = center_x - width/2;
+        double rectRight = center_x + width/2;
+        double rectTop = center_y - height/2;
+        double rectBottom = center_y + height/2;
+
+        // 원의 중심이 사각형 내부에 있는 경우, 충돌한다
+        if (agent_x > rectLeft && agent_x < rectRight && agent_y > rectTop && agent_y < rectBottom) {
+            return true;
+        }
+
+        // 원의 중심이 사각형 바깥에 있을 때, 사각형의 가장 가까운 경계와 원의 중심 사이의 거리를 계산한다
+        double closestX = (agent_x < rectLeft) ? rectLeft : (agent_x > rectRight) ? rectRight : agent_x;
+        double closestY = (agent_y < rectTop) ? rectTop : (agent_y > rectBottom) ? rectBottom : agent_y;
+
+        double distX = agent_x - closestX;
+        double distY = agent_y - closestY;
+
+        // 거리와 원의 반지름을 비교한다
+        return (distX * distX + distY * distY) <= (agent_r * agent_r);
     }
 
     // Answers the question: is the robot described by `si_` at `state` valid?
@@ -99,6 +124,11 @@ public:
         if (x - robotRadius < 0 || x + robotRadius > spaceLimit[0] || y - robotRadius < 0 || y + robotRadius > spaceLimit[1])
             return false;
 
+        // check if it is in obstacle
+        for (auto obstacle : rectangleObstacles){
+            if (isCollideAgent(x, y, robotRadius, obstacle[0], obstacle[1], obstacle[2], obstacle[3]))
+                return false;
+        }
 
         // this returns a value that is always true but uses the two variables we define, so we avoid compiler warnings
         // return (const void*)rot != (const void*)pos;
@@ -130,10 +160,6 @@ public:
 
         return dist > (rad1 + rad2);
     }
-private:
-    std::unordered_map<std::string, double> radii_{ {"Robot 0", 0.1}, 
-                                                    {"Robot 1", 0.2}, 
-                                                    {"Robot 2", 0.3} };
 };
 
 /*
@@ -218,14 +244,7 @@ void plan(const std::string plannerName, const std::string baseName, const std::
     auto maxVelocity = config["maxVelocity"].as<double>();
     auto maxExpandDistance = config["maxExpandDistance"].as<double>();
     auto maxIteration = config["maxIteration"].as<int>();
-    auto rectangleObstacles = config["rectangleObstacles"].as<vector<vector<double>>>();
-    // create start and goals for every robot
-//    std::unordered_map<std::string, std::pair<int, int>> start_map{ {"Robot 0", {1, 1}},
-//                                                                    {"Robot 1", {5, 5}},
-//                                                                    {"Robot 2", {8, 8}} };
-//    std::unordered_map<std::string, std::pair<int, int>> goal_map{  {"Robot 0", {8, 7}},
-//                                                                    {"Robot 1", {2, 1}},
-//                                                                    {"Robot 2", {5, 6}} };
+    rectangleObstacles = config["rectangleObstacles"].as<vector<vector<double>>>();
 
     // construct an instance of multi-robot space information
     auto ma_si(std::make_shared<omrc::SpaceInformation>());
@@ -348,8 +367,13 @@ void plan(const std::string plannerName, const std::string baseName, const std::
 
         // set the low-level solve time
         planner->setLowLevelSolveTime(0.5);
+        auto start = std::chrono::high_resolution_clock::now();
+        bool solved = planner->as<omrb::Planner>()->solve(300.0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        double executionTime = (double) duration / 1e+9;
 
-        bool solved = planner->as<omrb::Planner>()->solve(30.0);
+
         string solutionFileName = "../../solutions/KCBS/KCBS_" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
         if (solved)
         {
@@ -358,22 +382,47 @@ void plan(const std::string plannerName, const std::string baseName, const std::
             YAML::Emitter out;
             out << YAML::BeginSeq;
             auto solution = ma_pdef->getSolutionPlan()->as<omrc::PlanControl>()->getPaths();
+            vector<double> sumOfSpaceDistances;
+            vector<double> sumOfTimeDistances;
             for (auto& path : solution) {
                 out << YAML::BeginSeq;
-                int time = 0;
+                int time = -1;
+                double space = 0;
+                double last_x = numeric_limits<double>::max();
+                double last_y = numeric_limits<double>::max();
                 for (auto &state : path->getStates()) {
+                    time++;
                     auto x = state->as<ob::SE2StateSpace::StateType>()->getX();
                     auto y = state->as<ob::SE2StateSpace::StateType>()->getY();
                     out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
-                    time++;
+                    if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
+                        space += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
+                    last_x = x;
+                    last_y = y;
                 }
+                sumOfSpaceDistances.push_back(space);
+                sumOfTimeDistances.push_back(time);
                 out << YAML::EndSeq;
             }
             out << YAML::EndSeq;
             fout << out.c_str() << endl;
+
+            // Save Sum of Space and Time Distances in CSV format
+            string csv_file_path = "../../raw_data/KCBS/KCBS_" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+            std::ofstream csv_out(csv_file_path);
+
+            // Assuming executionTime is some variable that holds the execution time
+            csv_out << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
+                    << std::accumulate(sumOfTimeDistances.begin(), sumOfTimeDistances.end(), 0.0) << ","
+                    << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
+                    << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
+                    << executionTime << ","
+                    << std::endl;
+
             std::cout << "K-CBS Found solution!" << std::endl;
         }
-        // planner.reset();
+
+        planner.reset();
     }
 }
 
@@ -386,8 +435,8 @@ int main(int argc, char* argv[])
     string numOfAgents = args[2];
     string count = args[3];
 
-    // std::string plannerName = "K-CBS";
-    std::string plannerName = "PP";
+    std::string plannerName = "K-CBS";
+    //std::string plannerName = "PP";
     plan(plannerName, baseName, numOfAgents, count);
 
     return 0;
