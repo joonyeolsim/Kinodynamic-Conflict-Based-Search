@@ -20,7 +20,7 @@ robotRadii:
 spaceLimit: [5.0, 5.0]
 dimension: 2
 lambdaFactor: 0.5
-maxIteration: 500
+maxIteration: 1000
 maxVelocity: 2.0
 maxExpandDistance: 2.0
 rectangleObstacles:

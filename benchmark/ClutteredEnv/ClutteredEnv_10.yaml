@@ -4,7 +4,7 @@ goalPoints: []
 lambdaFactor: 0.5
 maxVelocity: 2.0
 maxExpandDistance: 10.0
-maxIteration: 500
+maxIteration: 1500
 robotNum: 10
 robotRadii:
 - 0.5

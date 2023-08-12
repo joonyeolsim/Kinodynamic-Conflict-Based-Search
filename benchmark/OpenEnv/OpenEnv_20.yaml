@@ -3,7 +3,7 @@ startPoints: []
 goalPoints: []
 lambdaFactor: 0.5
 maxExpandDistance: 10.0
-maxIteration: 500
+maxIteration: 1000
 maxVelocity: 2.0
 rectangleObstacles: []
 robotNum: 20
