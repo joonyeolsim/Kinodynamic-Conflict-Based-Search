@@ -310,6 +310,7 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
                             if (dist < (rrobotRadius + rrobotRadius)){
                                 cout << goalState[0] << " " << goalState[1] << " " << jState[0] << " " << jState[1] << endl;
                                 cout << "Agent " + to_string(k) + " and agent " + to_string(l) + " collide at goal" << endl;
+                                okayFlag = false;
                             }
                         }
                     }
