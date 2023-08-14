@@ -367,6 +367,9 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
 
             std::cout << "ST-RRT PP Found solution!" << std::endl;
         }
+        else {
+            cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
+        }
     }
     else
         cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
