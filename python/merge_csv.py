@@ -1,11 +1,7 @@
 if __name__ == '__main__':
-    basename_list = ["ConfinedEnv", "NarrowEnv", "OpenEnv", "ClutteredEnv"]
+    basename_list = ["ClutteredEnv"]
     robot_num_list = [
-        [5],
-        [2],
         [5, 10, 15, 20, 25, 30],
-        [5, 10, 15, 20, 25, 30],
-	[15]
     ]
     count = 50
     for basename, robot_nums in zip(basename_list, robot_num_list):

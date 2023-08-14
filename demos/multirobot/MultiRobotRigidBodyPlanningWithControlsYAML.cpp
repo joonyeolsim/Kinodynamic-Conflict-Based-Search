@@ -328,8 +328,13 @@ void plan(const std::string plannerName, const std::string baseName, const std::
         // plan for all agents using a prioritized planner (PP)
         auto planner = std::make_shared<omrc::PP>(ma_si);
         planner->setProblemDefinition(ma_pdef); // be sure to set the problem definition
-        bool solved = planner->as<omrb::Planner>()->solve(30.0);
-        string solutionFileName = "../../solutions/PP/PP_" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+        auto start = std::chrono::high_resolution_clock::now();
+        bool solved = planner->as<omrb::Planner>()->solve(300.0);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        double executionTime = (double) duration / 1e+9;
+
+        string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
         if (solved)
         {
             std::ofstream fout(solutionFileName);
@@ -337,21 +342,47 @@ void plan(const std::string plannerName, const std::string baseName, const std::
             YAML::Emitter out;
             out << YAML::BeginSeq;
             auto solution = ma_pdef->getSolutionPlan()->as<omrc::PlanControl>()->getPaths();
+            vector<double> sumOfSpaceDistances;
+            vector<double> sumOfTimeDistances;
             for (auto& path : solution) {
                 out << YAML::BeginSeq;
-                int time = 0;
+                int time = -1;
+                double space = 0;
+                double last_x = numeric_limits<double>::max();
+                double last_y = numeric_limits<double>::max();
                 for (auto &state : path->getStates()) {
+                    time++;
                     auto x = state->as<ob::SE2StateSpace::StateType>()->getX();
                     auto y = state->as<ob::SE2StateSpace::StateType>()->getY();
                     out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
-                    time++;
+                    if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
+                        space += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
+                    last_x = x;
+                    last_y = y;
                 }
+                sumOfSpaceDistances.push_back(space);
+                sumOfTimeDistances.push_back(time);
                 out << YAML::EndSeq;
             }
             out << YAML::EndSeq;
             fout << out.c_str() << endl;
+
+            // Save Sum of Space and Time Distances in CSV format
+            string csv_file_path = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+            std::ofstream csv_out(csv_file_path);
+
+            // Assuming executionTime is some variable that holds the execution time
+            csv_out << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
+                    << std::accumulate(sumOfTimeDistances.begin(), sumOfTimeDistances.end(), 0.0) << ","
+                    << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
+                    << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
+                    << executionTime << ","
+                    << std::endl;
+
             std::cout << "PP Found solution!" << std::endl;
         }
+
+        planner.reset();
     }
     else if (plannerName == "K-CBS")
     {
@@ -431,15 +462,15 @@ int main(int argc, char* argv[])
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
     std::vector<std::string> args(argv, argv + argc);
 
-    vector<string> baseName = {"OpenEnv"};
-    vector<string> numOfAgents = {"5", "10", "15", "20", "25", "30"};
+    vector<string> baseName = {"ConfinedEnv"};
+    vector<string> numOfAgents = {"5"};
     // vector string count 0 to 49
     vector<string> count;
     for (int i = 0; i < 50; i++)
         count.push_back(to_string(i));
 
-    std::string plannerName = "K-CBS";
-    //std::string plannerName = "PP";
+//    std::string plannerName = "K-CBS";
+    std::string plannerName = "PP";
     for (auto& b : baseName)
         for (auto& n : numOfAgents)
             for (auto& c : count)

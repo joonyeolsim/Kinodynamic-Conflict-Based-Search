@@ -55,8 +55,6 @@ if (OMPL_BUILD_DEMOS)
     add_ompl_demo(demo_MultiRobotRigidBodyPlanning multirobot/MultiRobotRigidBodyPlanning.cpp)
     add_ompl_demo(demo_MultiRobotRigidBodyPlanningWithControls multirobot/MultiRobotRigidBodyPlanningWithControls.cpp)
 
-    add_ompl_demo(demo_SpaceTimePlanning SpaceTimePlanning.cpp)
-
     find_package(yaml-cpp)
     set_package_properties(yaml-cpp PROPERTIES
         URL "https://github.com/jbeder/yaml-cpp"
@@ -83,6 +81,9 @@ if (OMPL_BUILD_DEMOS)
         add_ompl_demo(demo_MultiRobotRigidBodyPlanningWithControlsYaml multirobot/MultiRobotRigidBodyPlanningWithControlsYAML.cpp)
         target_include_directories(demo_MultiRobotRigidBodyPlanningWithControlsYaml PUBLIC ${YAMLCPP_INCLUDE_DIRS})
         target_link_libraries(demo_MultiRobotRigidBodyPlanningWithControlsYaml ${YAMLCPP_LIBRARIES})
+        add_ompl_demo(demo_SpaceTimePlanning SpaceTimePlanning.cpp)
+        target_include_directories(demo_SpaceTimePlanning PUBLIC ${YAMLCPP_INCLUDE_DIRS})
+        target_link_libraries(demo_SpaceTimePlanning ${YAMLCPP_LIBRARIES})
     endif()
 
     if (OMPL_EXTENSION_ODE)

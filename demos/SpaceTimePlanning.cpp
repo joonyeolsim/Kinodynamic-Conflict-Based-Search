@@ -42,26 +42,89 @@
 
 #include <ompl/config.h>
 #include <iostream>
+#include <vector>
+#include <yaml-cpp/yaml.h>
+#include <chrono>
+#include <fstream>
 
+using namespace std;
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
 /**
  * Demonstration of planning through space time using the Animation state space and the SpaceTimeRRT* planner.
  */
+double robotRadius;
+vector<double> spaceLimit;
+vector<vector<double>> rectangleObstacles;
+vector<vector<vector<double>>> dynamicObstacles;
+vector<double> maxTimes;
+
+bool isCollideAgent(double agent_x, double agent_y, double agent_r, double center_x, double center_y, double width, double height) {
+    // 직사각형의 영역을 구한다
+    double rectLeft = center_x - width/2;
+    double rectRight = center_x + width/2;
+    double rectTop = center_y - height/2;
+    double rectBottom = center_y + height/2;
+
+    // 원의 중심이 사각형 내부에 있는 경우, 충돌한다
+    if (agent_x > rectLeft && agent_x < rectRight && agent_y > rectTop && agent_y < rectBottom) {
+        return true;
+    }
+
+    // 원의 중심이 사각형 바깥에 있을 때, 사각형의 가장 가까운 경계와 원의 중심 사이의 거리를 계산한다
+    double closestX = (agent_x < rectLeft) ? rectLeft : (agent_x > rectRight) ? rectRight : agent_x;
+    double closestY = (agent_y < rectTop) ? rectTop : (agent_y > rectBottom) ? rectBottom : agent_y;
+
+    double distX = agent_x - closestX;
+    double distY = agent_y - closestY;
+
+    // 거리와 원의 반지름을 비교한다
+    return (distX * distX + distY * distY) <= (agent_r * agent_r);
+}
 
 bool isStateValid(const ob::State *state)
 {
     // extract the space component of the state and cast it to what we expect
-    const auto pos = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+    const auto x = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+    const auto y = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
 
     // extract the time component of the state and cast it to what we expect
     const auto t = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
 
-    // check validity of state defined by pos & t (e.g. check if constraints are satisfied)...
+    // check if it is in area
+    if (x - robotRadius < 0 || x + robotRadius > spaceLimit[0] || y - robotRadius < 0 || y + robotRadius > spaceLimit[1])
+        return false;
 
+    // check if it is in obstacle
+    for (const auto& obstacle : rectangleObstacles){
+        if (isCollideAgent(x, y, robotRadius, obstacle[0], obstacle[1], obstacle[2], obstacle[3]))
+            return false;
+    }
+
+    // check if it is in dynamic path
+    for (int i = 0; i < dynamicObstacles.size(); i++){
+        // check if it is greater than the max time
+        if (t > maxTimes[i]){
+            double dist = sqrt(pow(dynamicObstacles[i].back()[0] - x, 2) + pow(dynamicObstacles[i].back()[1] - y, 2));
+            if (dist <= (robotRadius + robotRadius)){
+                return false;
+            }
+        }
+        else{
+            for (auto oState : dynamicObstacles[i]){
+                // check if it is in the same time
+                if (t - 1 <= oState[2] && t + 1 >= oState[2]){
+                    double dist = sqrt(pow(oState[0] - x, 2) + pow(oState[1] - y, 2));
+                    if (dist <= (robotRadius + robotRadius)){
+                        return false;
+                    }
+                }
+            }
+        }
+    }
     // return a value that is always true
-    return t >= 0 && pos < std::numeric_limits<double>::infinity();
+    return t >= 0 && x < std::numeric_limits<double>::infinity() && y < std::numeric_limits<double>::infinity();
 }
 
 class SpaceTimeMotionValidator : public ob::MotionValidator {
@@ -85,7 +148,7 @@ public:
         auto deltaT = s2->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position -
                       s1->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
 
-        if (!(deltaT > 0 && deltaPos / deltaT <= vMax_)) {
+        if (!(deltaT > 0 && deltaPos <= vMax_)) {
             invalid_++;
             return false;
         }
@@ -106,73 +169,161 @@ private:
     ob::StateSpace *stateSpace_; // the animation state space for distance calculation
 };
 
-void plan(void)
+void plan(const string& baseName, const string& numOfAgents, const string& count)
 {
-    // set maximum velocity
-    double vMax = 0.2;
+    YAML::Node config = YAML::LoadFile("../../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
 
-    // construct the state space we are planning in
-    auto vectorSpace(std::make_shared<ob::RealVectorStateSpace>(1));
-    auto space = std::make_shared<ob::SpaceTimeStateSpace>(vectorSpace, vMax);
+    auto robotNum = config["robotNum"].as<int>();
+    auto startPoints = config["startPoints"].as<vector<vector<double>>>();
+    auto goalPoints = config["goalPoints"].as<vector<vector<double>>>();
+    auto dimension = config["dimension"].as<int>();
+    spaceLimit = config["spaceLimit"].as<vector<double>>();
+    robotRadius = config["robotRadii"].as<vector<double>>()[0];
+    auto lambdaFactor = config["lambdaFactor"].as<double>();
+    auto maxVelocity = config["maxVelocity"].as<double>();
+    auto maxExpandDistance = config["maxExpandDistance"].as<double>();
+    auto maxIteration = config["maxIteration"].as<int>();
+    rectangleObstacles = config["rectangleObstacles"].as<vector<vector<double>>>();
 
-    // set the bounds for R1
-    ob::RealVectorBounds bounds(1);
-    bounds.setLow(-1.0);
-    bounds.setHigh(1.0);
-    vectorSpace->setBounds(bounds);
+    auto start_time = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < robotNum; i++){
+        // set maximum velocity
+        double vMax = robotRadius;
 
-    // set time bounds. Planning with unbounded time is also possible when using ST-RRT*.
-    space->setTimeBounds(0.0, 10.0);
+        // construct the state space we are planning in
+        auto vectorSpace(std::make_shared<ob::RealVectorStateSpace>(dimension));
+        auto space = std::make_shared<ob::SpaceTimeStateSpace>(vectorSpace, vMax);
 
-    // create the space information class for the space
-    ob::SpaceInformationPtr si = std::make_shared<ob::SpaceInformation>(space);
+        // set the bounds for R1
+        ob::RealVectorBounds bounds(dimension);
+        bounds.setLow(0.0);
+        bounds.setHigh(0, spaceLimit[0]);
+        bounds.setHigh(1, spaceLimit[1]);
+        vectorSpace->setBounds(bounds);
 
-    // set state validity checking for this space
-    si->setStateValidityChecker([](const ob::State *state) { return isStateValid(state); });
-    si->setMotionValidator(std::make_shared<SpaceTimeMotionValidator>(si));
+        // set time bounds. Planning with unbounded time is also possible when using ST-RRT*.
+        // space->setTimeBounds(0.0, 10.0);
 
-    // define a simple setup class
-    og::SimpleSetup ss(si);
+        // create the space information class for the space
+        ob::SpaceInformationPtr si = std::make_shared<ob::SpaceInformation>(space);
 
-    // create a start state
-    ob::ScopedState<> start(space);
-    start[0] = 0; // pos
+        // set state validity checking for this space
+        si->setStateValidityChecker([](const ob::State *state) { return isStateValid(state); });
+        si->setMotionValidator(std::make_shared<SpaceTimeMotionValidator>(si));
 
-    // create a goal state
-    ob::ScopedState<> goal(space);
-    goal[0] = 1; // pos
+        // define a simple setup class
+        og::SimpleSetup ss(si);
 
-    // set the start and goal states
-    ss.setStartAndGoalStates(start, goal);
+        // create a start state
+        ob::ScopedState<> start(space);
+        start[0] = startPoints[i][0]; // pos
+        start[1] = startPoints[i][1]; // pos
 
-    // construct the planner
-    auto *strrtStar = new og::STRRTstar(si);
+        // create a goal state
+        ob::ScopedState<> goal(space);
+        goal[0] = goalPoints[i][0]; // pos
+        goal[1] = goalPoints[i][1]; // pos
 
-    // set planner parameters
-    strrtStar->setRange(vMax);
+        // set the start and goal states
+        ss.setStartAndGoalStates(start, goal);
 
-    // set the used planner
-    ss.setPlanner(ob::PlannerPtr(strrtStar));
+        // construct the planner
+        auto *strrtStar = new og::STRRTstar(si);
 
-    // attempt to solve the problem within one second of planning time
-    ob::PlannerStatus solved = ss.solve(1.0);
+        // set planner parameters
+        strrtStar->setRange(vMax);
 
-    if (solved)
-    {
-        std::cout << "Found solution:" << std::endl;
-        // print the path to screen
-        ss.getSolutionPath().print(std::cout);
+        // set the used planner
+        ss.setPlanner(ob::PlannerPtr(strrtStar));
+
+        // attempt to solve the problem within one second of planning time
+        ob::PlannerStatus solved = ss.solve(300.0);
+
+        if (solved)
+        {
+            std::cout << "Found solution for agent " + to_string(i) << std::endl;
+            // print the path to screen
+            auto solution = ss.getSolutionPath();
+            dynamicObstacles.emplace_back();
+            for (auto &state : solution.getStates()){
+                const auto x = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+                const auto y = state->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
+                const auto t = state->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+                dynamicObstacles.back().push_back({x, y, t});
+            }
+            maxTimes.push_back(dynamicObstacles.back().back()[2]);
+        }
+        else
+            std::cout << "No solution found for agent " + to_string(i) << std::endl;
+
+    }
+    if (dynamicObstacles.size() == robotNum){
+        cout << "Finished planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+        double executionTime = (double) duration / 1e+9;
+
+        string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+        string dataFileName = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+
+        // Save Solution in YAML format
+        std::ofstream solutionOut(solutionFileName);
+        YAML::Emitter out;
+        out << YAML::BeginSeq;
+        vector<double> sumOfSpaceDistances;
+        vector<double> sumOfTimeDistances;
+        for (const auto& path : dynamicObstacles) {
+            out << YAML::BeginSeq;
+            double spaceDistance = 0;
+            double last_x = numeric_limits<double>::max();
+            double last_y = numeric_limits<double>::max();
+            for (const auto &pState : path) {
+                auto x = pState[0];
+                auto y = pState[1];
+                auto time = pState[2];
+                cout << x << " " << y << " " << time << endl;
+                out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
+                if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
+                    spaceDistance += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
+                last_x = x;
+                last_y = y;
+            }
+            cout << "--------------------------" << endl;
+            sumOfSpaceDistances.push_back(spaceDistance);
+            sumOfTimeDistances.push_back(path.back()[2]);
+            out << YAML::EndSeq;
+        }
+        out << YAML::EndSeq;
+        solutionOut << out.c_str() << endl;
+
+        // Save Sum of Space and Time Distances in CSV format
+        std::ofstream dataOut(dataFileName);
+
+        // Assuming executionTime is some variable that holds the execution time
+        dataOut << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
+                << std::accumulate(sumOfTimeDistances.begin(), sumOfTimeDistances.end(), 0.0) << ","
+                << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
+                << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
+                << executionTime << ",";
+
+        std::cout << "ST-RRT PP Found solution!" << std::endl;
+
     }
     else
-        std::cout << "No solution found" << std::endl;
-
+        cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
 }
 
-int main(int /*argc*/, char ** /*argv*/)
+int main(int argc, char* argv[])
 {
+    std::vector<std::string> args(argv, argv + argc);
+
+    string baseName = args[1];
+    string numOfAgents = args[2];
+    string count = args[3];
+
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    plan();
+    plan(baseName, numOfAgents, count);
 
     return 0;
 }

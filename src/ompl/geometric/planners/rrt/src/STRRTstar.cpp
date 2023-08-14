@@ -377,8 +377,9 @@ ompl::base::PlannerStatus ompl::geometric::STRRTstar::solve(const ompl::base::Pl
             {
                 constructSolution(startMotion, goalMotion, intermediateSolutionCallback, ptc);
                 solved = true;
-                if (ptc || upperTimeBound_ == minimumTime_)
-                    break;  // first solution is enough or optimal solution is found
+                break;
+//                if (ptc || upperTimeBound_ == minimumTime_)
+//                    break;  // first solution is enough or optimal solution is found
                 // continue to look for solutions with the narrower time bound until the termination condition is met
             }
             else
