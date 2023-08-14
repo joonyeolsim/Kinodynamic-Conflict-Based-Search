@@ -4,8 +4,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import yaml
 
-config_file = "benchmark/BaseEnv_4.yaml"
-solution_file = "solutions/BaseEnv_4_solution.yaml"
+config_file = "../benchmark/OpenEnv/OpenEnv_30_0.yaml"
+solution_file = "../solutions/OpenEnv/OpenEnv_30_0_solution.yaml"
 
 # benchmark 파일
 with open(config_file, 'r') as stream:

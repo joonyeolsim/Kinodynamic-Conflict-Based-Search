@@ -102,27 +102,6 @@ bool isStateValid(const ob::State *state)
             return false;
     }
 
-    // check if it is in dynamic path
-    for (int i = 0; i < dynamicObstacles.size(); i++){
-        // check if it is greater than the max time
-        if (t > maxTimes[i]){
-            double dist = sqrt(pow(dynamicObstacles[i].back()[0] - x, 2) + pow(dynamicObstacles[i].back()[1] - y, 2));
-            if (dist <= (robotRadius + robotRadius)){
-                return false;
-            }
-        }
-        else{
-            for (auto oState : dynamicObstacles[i]){
-                // check if it is in the same time
-                if (t - 1 <= oState[2] && t + 1 >= oState[2]){
-                    double dist = sqrt(pow(oState[0] - x, 2) + pow(oState[1] - y, 2));
-                    if (dist <= (robotRadius + robotRadius)){
-                        return false;
-                    }
-                }
-            }
-        }
-    }
     // return a value that is always true
     return t >= 0 && x < std::numeric_limits<double>::infinity() && y < std::numeric_limits<double>::infinity();
 }
@@ -154,7 +133,34 @@ public:
         }
 
         // check if the path between the states is unconstrained (perform interpolation)...
+        // extract the space component of the state and cast it to what we expect
+        const auto x = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+        const auto y = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
 
+        // extract the time component of the state and cast it to what we expect
+        const auto t = s2->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+
+        // check if it is in dynamic path
+        for (int i = 0; i < dynamicObstacles.size(); i++){
+            // check if it is greater than the max time
+            if (t > maxTimes[i]){
+                double dist = sqrt(pow(dynamicObstacles[i].back()[0] - x, 2) + pow(dynamicObstacles[i].back()[1] - y, 2));
+                if (dist <= (robotRadius + robotRadius)){
+                    return false;
+                }
+            }
+            else{
+                for (auto oState : dynamicObstacles[i]){
+                    // check if it is in the same time
+                    if (t - deltaT <= oState[2] && t + deltaT >= oState[2]){
+                        double dist = sqrt(pow(oState[0] - x, 2) + pow(oState[1] - y, 2));
+                        if (dist <= (robotRadius + robotRadius)){
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
         return true;
     }
 
@@ -171,7 +177,7 @@ private:
 
 void plan(const string& baseName, const string& numOfAgents, const string& count)
 {
-    YAML::Node config = YAML::LoadFile("../../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
+    YAML::Node config = YAML::LoadFile("../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
 
     auto robotNum = config["robotNum"].as<int>();
     auto startPoints = config["startPoints"].as<vector<vector<double>>>();
@@ -263,8 +269,8 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
         double executionTime = (double) duration / 1e+9;
 
-        string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
-        string dataFileName = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+        string solutionFileName = "../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+        string dataFileName = "../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
 
         // Save Solution in YAML format
         std::ofstream solutionOut(solutionFileName);
