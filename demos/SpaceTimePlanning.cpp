@@ -228,7 +228,7 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < robotNum; i++){
         // set maximum velocity
-        double vMax = maxVelocity;
+        double vMax = robotRadius;
 
         // construct the state space we are planning in
         auto vectorSpace(std::make_shared<ob::RealVectorStateSpace>(dimension));
