@@ -34,7 +34,7 @@ execute_with_timeout() {
 # 환경 및 변수 설정
 ENVIRONMENTS=("OpenEnv")
 VARIABLES_1=(5 10 15 20 25 30)
-COMMAND="../cmake-build-debug/bin/demo_SpaceTimePlanning"
+COMMAND="../build/Release/bin/demo_SpaceTimePlanning"
 
 # 각 환경과 변수를 사용하여 명령어 실행
 for env in "${ENVIRONMENTS[@]}"; do

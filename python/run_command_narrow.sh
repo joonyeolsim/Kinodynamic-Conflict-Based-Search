@@ -34,7 +34,7 @@ execute_with_timeout() {
 # 환경 및 변수 설정
 ENVIRONMENTS=("NarrowEnv")
 VARIABLES_1=(2)
-COMMAND="../cmake-build-debug/ST_CBS"
+COMMAND="../build/Release/bin/demo_SpaceTimePlanning"
 
 # 각 환경과 변수를 사용하여 명령어 실행
 for env in "${ENVIRONMENTS[@]}"; do
