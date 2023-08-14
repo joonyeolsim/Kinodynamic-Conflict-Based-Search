@@ -177,7 +177,7 @@ private:
 
 void plan(const string& baseName, const string& numOfAgents, const string& count)
 {
-    YAML::Node config = YAML::LoadFile("../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
+    YAML::Node config = YAML::LoadFile("../../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
 
     auto robotNum = config["robotNum"].as<int>();
     auto startPoints = config["startPoints"].as<vector<vector<double>>>();
@@ -269,8 +269,8 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
         double executionTime = (double) duration / 1e+9;
 
-        string solutionFileName = "../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
-        string dataFileName = "../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
+        string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+        string dataFileName = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
 
         // Save Solution in YAML format
         std::ofstream solutionOut(solutionFileName);
