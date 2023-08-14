@@ -4,8 +4,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import yaml
 
-config_file = "../benchmark/OpenEnv/OpenEnv_30_0.yaml"
-solution_file = "../solutions/OpenEnv/OpenEnv_30_0_solution.yaml"
+config_file = "../benchmark/OpenEnv/OpenEnv_5_0.yaml"
+solution_file = "../solutions/OpenEnv/OpenEnv_5_0_solution.yaml"
 
 # benchmark 파일
 with open(config_file, 'r') as stream:
@@ -18,14 +18,25 @@ with open(solution_file, 'r') as stream:
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-for path in solution:
+colors = [
+    'blue', 'green', 'purple', 'orange', 'yellow', 'brown', 'pink', 'cyan', 'magenta',
+    'lime', 'teal', 'lavender', 'turquoise', 'darkgreen', 'tan', 'salmon', 'gold',
+    'darkred', 'darkblue', 'navy', 'crimson', 'aqua', 'deepskyblue', 'firebrick',
+    'gray', 'maroon', 'olive', 'khaki', 'lightseagreen', 'lightsalmon', 'mediumblue',
+    'mediumorchid', 'mediumseagreen', 'mediumslateblue', 'mediumturquoise', 'mediumvioletred',
+    'midnightblue', 'orchid', 'palegreen', 'paleturquoise', 'palevioletred', 'peachpuff',
+    'peru', 'plum', 'powderblue', 'rosybrown', 'royalblue', 'saddlebrown', 'sienna',
+    'silver', 'skyblue', 'slategray', 'springgreen', 'steelblue'
+]
+
+for i, path in enumerate(solution):
     # x, y, time 좌표 추출
     x_coords = [point[0] for point in path]
     y_coords = [point[1] for point in path]
     time_coords = [point[2] for point in path]
 
     # 로봇의 경로 표시
-    ax.plot(x_coords, y_coords, time_coords, marker='o')
+    ax.plot(x_coords, y_coords, time_coords, color=colors[i], marker='o')
 
 # 그래프의 축 설정
 ax.set_xlabel('X')

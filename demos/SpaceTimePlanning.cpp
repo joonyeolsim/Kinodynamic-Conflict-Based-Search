@@ -134,11 +134,11 @@ public:
 
         // check if the path between the states is unconstrained (perform interpolation)...
         // extract the space component of the state and cast it to what we expect
-        const auto x = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
-        const auto y = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
+        auto x = s1->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+        auto y = s1->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
 
         // extract the time component of the state and cast it to what we expect
-        const auto t = s2->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+        auto t = s1->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
 
         // check if it is in dynamic path
         for (int i = 0; i < dynamicObstacles.size(); i++){
@@ -146,6 +146,7 @@ public:
             if (t > maxTimes[i]){
                 double dist = sqrt(pow(dynamicObstacles[i].back()[0] - x, 2) + pow(dynamicObstacles[i].back()[1] - y, 2));
                 if (dist <= (robotRadius + robotRadius)){
+                    invalid_++;
                     return false;
                 }
             }
@@ -155,6 +156,38 @@ public:
                     if (t - deltaT <= oState[2] && t + deltaT >= oState[2]){
                         double dist = sqrt(pow(oState[0] - x, 2) + pow(oState[1] - y, 2));
                         if (dist <= (robotRadius + robotRadius)){
+                            invalid_++;
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        // extract the space component of the state and cast it to what we expect
+        x = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[0];
+        y = s2->as<ob::CompoundState>()->as<ob::RealVectorStateSpace::StateType>(0)->values[1];
+
+        // extract the time component of the state and cast it to what we expect
+        t = s2->as<ob::CompoundState>()->as<ob::TimeStateSpace::StateType>(1)->position;
+
+        // check if it is in dynamic path
+        for (int i = 0; i < dynamicObstacles.size(); i++){
+            // check if it is greater than the max time
+            if (t > maxTimes[i]){
+                double dist = sqrt(pow(dynamicObstacles[i].back()[0] - x, 2) + pow(dynamicObstacles[i].back()[1] - y, 2));
+                if (dist < (robotRadius + robotRadius)){
+                    invalid_++;
+                    return false;
+                }
+            }
+            else{
+                for (auto oState : dynamicObstacles[i]){
+                    // check if it is in the same time
+                    if (t - deltaT < oState[2] && t + deltaT > oState[2]){
+                        double dist = sqrt(pow(oState[0] - x, 2) + pow(oState[1] - y, 2));
+                        if (dist < (robotRadius + robotRadius)){
+                            invalid_++;
                             return false;
                         }
                     }
@@ -184,7 +217,8 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
     auto goalPoints = config["goalPoints"].as<vector<vector<double>>>();
     auto dimension = config["dimension"].as<int>();
     spaceLimit = config["spaceLimit"].as<vector<double>>();
-    robotRadius = config["robotRadii"].as<vector<double>>()[0];
+    auto rrobotRadius = config["robotRadii"].as<vector<double>>()[0];
+    robotRadius = config["robotRadii"].as<vector<double>>()[0] * 1.1;
     auto lambdaFactor = config["lambdaFactor"].as<double>();
     auto maxVelocity = config["maxVelocity"].as<double>();
     auto maxExpandDistance = config["maxExpandDistance"].as<double>();
@@ -194,7 +228,7 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < robotNum; i++){
         // set maximum velocity
-        double vMax = robotRadius;
+        double vMax = maxVelocity;
 
         // construct the state space we are planning in
         auto vectorSpace(std::make_shared<ob::RealVectorStateSpace>(dimension));
@@ -263,57 +297,75 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
             std::cout << "No solution found for agent " + to_string(i) << std::endl;
 
     }
+    bool okayFlag = true;
     if (dynamicObstacles.size() == robotNum){
-        cout << "Finished planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        double executionTime = (double) duration / 1e+9;
-
-        string solutionFileName = "../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
-        string dataFileName = "../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
-
-        // Save Solution in YAML format
-        std::ofstream solutionOut(solutionFileName);
-        YAML::Emitter out;
-        out << YAML::BeginSeq;
-        vector<double> sumOfSpaceDistances;
-        vector<double> sumOfTimeDistances;
-        for (const auto& path : dynamicObstacles) {
-            out << YAML::BeginSeq;
-            double spaceDistance = 0;
-            double last_x = numeric_limits<double>::max();
-            double last_y = numeric_limits<double>::max();
-            for (const auto &pState : path) {
-                auto x = pState[0];
-                auto y = pState[1];
-                auto time = pState[2];
-                cout << x << " " << y << " " << time << endl;
-                out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
-                if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
-                    spaceDistance += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
-                last_x = x;
-                last_y = y;
+        for (int k = 0; k < robotNum; k++){
+            auto goalState = dynamicObstacles[k].back();
+            for (int l = 0; l < robotNum; l++){
+                if (k != l){
+                    for (const auto& jState : dynamicObstacles[l]){
+                        if (jState[2] > goalState[2])
+                        {
+                            double dist = sqrt(pow(goalState[0] - jState[0], 2) + pow(goalState[1] - jState[1], 2));
+                            if (dist < (rrobotRadius + rrobotRadius)){
+                                cout << goalState[0] << " " << goalState[1] << " " << jState[0] << " " << jState[1] << endl;
+                                cout << "Agent " + to_string(k) + " and agent " + to_string(l) + " collide at goal" << endl;
+                            }
+                        }
+                    }
+                }
             }
-            cout << "--------------------------" << endl;
-            sumOfSpaceDistances.push_back(spaceDistance);
-            sumOfTimeDistances.push_back(path.back()[2]);
-            out << YAML::EndSeq;
         }
-        out << YAML::EndSeq;
-        solutionOut << out.c_str() << endl;
 
-        // Save Sum of Space and Time Distances in CSV format
-        std::ofstream dataOut(dataFileName);
+        if (okayFlag){
+            cout << "Finished planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+            double executionTime = (double) duration / 1e+9;
 
-        // Assuming executionTime is some variable that holds the execution time
-        dataOut << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
-                << std::accumulate(sumOfTimeDistances.begin(), sumOfTimeDistances.end(), 0.0) << ","
-                << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
-                << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
-                << executionTime << ",";
+            string solutionFileName = "../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
+            string dataFileName = "../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
 
-        std::cout << "ST-RRT PP Found solution!" << std::endl;
+            // Save Solution in YAML format
+            std::ofstream solutionOut(solutionFileName);
+            YAML::Emitter out;
+            out << YAML::BeginSeq;
+            vector<double> sumOfSpaceDistances;
+            vector<double> sumOfTimeDistances;
+            for (const auto& path : dynamicObstacles) {
+                out << YAML::BeginSeq;
+                double spaceDistance = 0;
+                double last_x = numeric_limits<double>::max();
+                double last_y = numeric_limits<double>::max();
+                for (const auto &pState : path) {
+                    auto x = pState[0];
+                    auto y = pState[1];
+                    auto time = pState[2];
+                    out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
+                    if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
+                        spaceDistance += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
+                    last_x = x;
+                    last_y = y;
+                }
+                sumOfSpaceDistances.push_back(spaceDistance);
+                sumOfTimeDistances.push_back(path.back()[2]);
+                out << YAML::EndSeq;
+            }
+            out << YAML::EndSeq;
+            solutionOut << out.c_str() << endl;
 
+            // Save Sum of Space and Time Distances in CSV format
+            std::ofstream dataOut(dataFileName);
+
+            // Assuming executionTime is some variable that holds the execution time
+            dataOut << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
+                    << std::accumulate(sumOfTimeDistances.begin(), sumOfTimeDistances.end(), 0.0) << ","
+                    << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
+                    << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
+                    << executionTime << ",";
+
+            std::cout << "ST-RRT PP Found solution!" << std::endl;
+        }
     }
     else
         cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
