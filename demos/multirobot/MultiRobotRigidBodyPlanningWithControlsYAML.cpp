@@ -469,12 +469,16 @@ int main(int argc, char* argv[])
     for (int i = 0; i < 50; i++)
         count.push_back(to_string(i));
 
-//    std::string plannerName = "K-CBS";
-    std::string plannerName = "PP";
-    for (auto& b : baseName)
-        for (auto& n : numOfAgents)
-            for (auto& c : count)
+    std::string plannerName = "K-CBS";
+    //std::string plannerName = "PP";
+    for (auto& b : baseName){
+        for (auto& n : numOfAgents){
+            for (auto& c : count){
+                cout << "baseName: " << b << " numOfAgents: " << n << " count: " << c << endl;
                 plan(plannerName, b, n, c);
+            }
+        }
+    }
 
     return 0;
 }

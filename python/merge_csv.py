@@ -1,7 +1,7 @@
 if __name__ == '__main__':
     basename_list = ["ClutteredEnv"]
     robot_num_list = [
-        [5, 10, 15, 20, 25, 30],
+        [5],
     ]
     count = 50
     for basename, robot_nums in zip(basename_list, robot_num_list):
