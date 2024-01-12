@@ -39,6 +39,7 @@
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/STRRTstar.h>
 #include <ompl/geometric/SimpleSetup.h>
+#include "common.h"
 
 #include <ompl/config.h>
 #include <iostream>
@@ -56,32 +57,32 @@ namespace og = ompl::geometric;
  */
 double robotRadius;
 vector<double> spaceLimit;
-vector<vector<double>> rectangleObstacles;
+vector<shared_ptr<Obstacle>> obstacles;
 vector<vector<vector<double>>> dynamicObstacles;
 vector<double> maxTimes;
 
-bool isCollideAgent(double agent_x, double agent_y, double agent_r, double center_x, double center_y, double width, double height) {
-    // 직사각형의 영역을 구한다
-    double rectLeft = center_x - width/2;
-    double rectRight = center_x + width/2;
-    double rectTop = center_y - height/2;
-    double rectBottom = center_y + height/2;
-
-    // 원의 중심이 사각형 내부에 있는 경우, 충돌한다
-    if (agent_x > rectLeft && agent_x < rectRight && agent_y > rectTop && agent_y < rectBottom) {
-        return true;
-    }
-
-    // 원의 중심이 사각형 바깥에 있을 때, 사각형의 가장 가까운 경계와 원의 중심 사이의 거리를 계산한다
-    double closestX = (agent_x < rectLeft) ? rectLeft : (agent_x > rectRight) ? rectRight : agent_x;
-    double closestY = (agent_y < rectTop) ? rectTop : (agent_y > rectBottom) ? rectBottom : agent_y;
-
-    double distX = agent_x - closestX;
-    double distY = agent_y - closestY;
-
-    // 거리와 원의 반지름을 비교한다
-    return (distX * distX + distY * distY) <= (agent_r * agent_r);
-}
+// bool isCollideAgent(double agent_x, double agent_y, double agent_r, double center_x, double center_y, double width, double height) {
+//     // 직사각형의 영역을 구한다
+//     double rectLeft = center_x - width/2;
+//     double rectRight = center_x + width/2;
+//     double rectTop = center_y - height/2;
+//     double rectBottom = center_y + height/2;
+//
+//     // 원의 중심이 사각형 내부에 있는 경우, 충돌한다
+//     if (agent_x > rectLeft && agent_x < rectRight && agent_y > rectTop && agent_y < rectBottom) {
+//         return true;
+//     }
+//
+//     // 원의 중심이 사각형 바깥에 있을 때, 사각형의 가장 가까운 경계와 원의 중심 사이의 거리를 계산한다
+//     double closestX = (agent_x < rectLeft) ? rectLeft : (agent_x > rectRight) ? rectRight : agent_x;
+//     double closestY = (agent_y < rectTop) ? rectTop : (agent_y > rectBottom) ? rectBottom : agent_y;
+//
+//     double distX = agent_x - closestX;
+//     double distY = agent_y - closestY;
+//
+//     // 거리와 원의 반지름을 비교한다
+//     return (distX * distX + distY * distY) <= (agent_r * agent_r);
+// }
 
 bool isStateValid(const ob::State *state)
 {
@@ -97,9 +98,8 @@ bool isStateValid(const ob::State *state)
         return false;
 
     // check if it is in obstacle
-    for (const auto& obstacle : rectangleObstacles){
-        if (isCollideAgent(x, y, robotRadius, obstacle[0], obstacle[1], obstacle[2], obstacle[3]))
-            return false;
+    for (const auto& obstacle : obstacles){
+        if (obstacle->constrained(make_tuple(x, y), robotRadius)) return false;
     }
 
     // return a value that is always true
@@ -187,27 +187,51 @@ private:
     ob::StateSpace *stateSpace_; // the animation state space for distance calculation
 };
 
-void plan(const string& baseName, const string& numOfAgents, const string& count)
+void plan(string mapname, string obs, string robotnum, string testnum)
 {
-    YAML::Node config = YAML::LoadFile("../../benchmark/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + ".yaml");
+    string benchmarkPath = "benchmark/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
+                       robotnum + "_" + testnum + ".yaml";
+    string solutionPath = "solution/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" +
+                          robotnum + "_" + testnum + "_solution.txt";
+    string dataPath = "data/" + mapname + "_" + obs + "/agents" + robotnum + "/" + mapname + "_" + obs + "_" + robotnum +
+                      "_" + testnum + "_data.txt";
 
-    auto robotNum = config["robotNum"].as<int>();
+    YAML::Node config = YAML::LoadFile(benchmarkPath);
+
+    auto robotNum = config["agentNum"].as<int>();
     auto startPoints = config["startPoints"].as<vector<vector<double>>>();
     auto goalPoints = config["goalPoints"].as<vector<vector<double>>>();
-    auto dimension = config["dimension"].as<int>();
-    spaceLimit = config["spaceLimit"].as<vector<double>>();
-    auto rrobotRadius = config["robotRadii"].as<vector<double>>()[0];
-    robotRadius = config["robotRadii"].as<vector<double>>()[0] * 1.1;
-    auto lambdaFactor = config["lambdaFactor"].as<double>();
-    auto maxVelocity = config["maxVelocity"].as<double>();
-    auto maxExpandDistance = config["maxExpandDistance"].as<double>();
-    auto maxIteration = config["maxIteration"].as<int>();
-    rectangleObstacles = config["rectangleObstacles"].as<vector<vector<double>>>();
+    auto dimension = 2;
+
+    for (size_t i = 0; i < config["obstacles"].size(); ++i) {
+        if (mapname == "CircleEnv") {
+            auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
+            auto radius = config["obstacles"][i]["radius"].as<double>();
+            obstacles.emplace_back(make_shared<CircularObstacle>(center[0], center[1], radius));
+        } else {
+            auto center = config["obstacles"][i]["center"].as<std::vector<double>>();
+            auto height = config["obstacles"][i]["height"].as<double>();
+            auto width = config["obstacles"][i]["width"].as<double>();
+            obstacles.emplace_back(make_shared<RectangularObstacle>(center[0], center[1], width, height));
+        }
+    }
+
+    vector<Point> start_points;
+    vector<Point> goal_points;
+    for (size_t i = 0; i < config["startPoints"].size(); ++i) {
+        auto start = config["startPoints"][i].as<std::vector<double>>();
+        auto goal = config["goalPoints"][i].as<std::vector<double>>();
+        start_points.emplace_back(start[0], start[1]);
+        goal_points.emplace_back(goal[0], goal[1]);
+    }
+
+    robotRadius = 0.5;
+    spaceLimit = {40, 40};
 
     auto start_time = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < robotNum; i++){
         // set maximum velocity
-        double vMax = maxVelocity;
+        double vMax = 5.0;
 
         // construct the state space we are planning in
         auto vectorSpace(std::make_shared<ob::RealVectorStateSpace>(dimension));
@@ -286,7 +310,7 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
                         if (jState[2] > goalState[2])
                         {
                             double dist = sqrt(pow(goalState[0] - jState[0], 2) + pow(goalState[1] - jState[1], 2));
-                            if (dist < (rrobotRadius + rrobotRadius)){
+                            if (dist < (robotRadius + robotRadius)){
                                 cout << goalState[0] << " " << goalState[1] << " " << jState[0] << " " << jState[1] << endl;
                                 cout << "Agent " + to_string(k) + " and agent " + to_string(l) + " collide at goal" << endl;
                                 okayFlag = false;
@@ -298,44 +322,42 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
         }
 
         if (okayFlag){
-            cout << "Finished planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
             double executionTime = (double) duration / 1e+9;
 
-            string solutionFileName = "../../solutions/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_solution.yaml";
-            string dataFileName = "../../raw_data/" + baseName + "/" + baseName + "_" + numOfAgents + "_" + count + "_data.csv";
-
             // Save Solution in YAML format
-            std::ofstream solutionOut(solutionFileName);
-            YAML::Emitter out;
-            out << YAML::BeginSeq;
+            ofstream file(solutionPath, ios::out);
+            if (!file.is_open()) {
+                cerr << "Error opening file: " << solutionPath << endl;
+                return;
+            }
             vector<double> sumOfSpaceDistances;
             vector<double> sumOfTimeDistances;
-            for (const auto& path : dynamicObstacles) {
-                out << YAML::BeginSeq;
+            for (int i = 0; i < robotNum; i++){
+                auto path = dynamicObstacles[i];
                 double spaceDistance = 0;
                 double last_x = numeric_limits<double>::max();
                 double last_y = numeric_limits<double>::max();
+                file << "Agent " << i << ":";
                 for (const auto &pState : path) {
                     auto x = pState[0];
                     auto y = pState[1];
                     auto time = pState[2];
-                    out << YAML::Flow << YAML::BeginSeq << x << y << time << YAML::EndSeq;
+                    file << "(" << x << "," << y << "," << time << ")->";
                     if (last_x != numeric_limits<double>::max() && last_y != numeric_limits<double>::max())
                         spaceDistance += sqrt(pow(x - last_x, 2) + pow(y - last_y, 2));
                     last_x = x;
                     last_y = y;
                 }
+                file << endl;
                 sumOfSpaceDistances.push_back(spaceDistance);
                 sumOfTimeDistances.push_back(path.back()[2]);
-                out << YAML::EndSeq;
             }
-            out << YAML::EndSeq;
-            solutionOut << out.c_str() << endl;
+            file.close();
 
             // Save Sum of Space and Time Distances in CSV format
-            std::ofstream dataOut(dataFileName);
+            std::ofstream dataOut(dataPath);
 
             // Assuming executionTime is some variable that holds the execution time
             dataOut << std::accumulate(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end(), 0.0) << ","
@@ -343,28 +365,34 @@ void plan(const string& baseName, const string& numOfAgents, const string& count
                     << *std::max_element(sumOfSpaceDistances.begin(), sumOfSpaceDistances.end()) << ","
                     << *std::max_element(sumOfTimeDistances.begin(), sumOfTimeDistances.end()) << ","
                     << executionTime << ",";
+            dataOut.close();
 
             std::cout << "ST-RRT PP Found solution!" << std::endl;
         }
-        else {
-            cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
-        }
     }
-    else
-        cout << "Failed planning for " + baseName + "_" + numOfAgents + "_" + count + ".yaml" << endl;
 }
 
 int main(int argc, char* argv[])
 {
-    std::vector<std::string> args(argv, argv + argc);
-
-    string baseName = args[1];
-    string numOfAgents = args[2];
-    string count = args[3];
+    string mapname;
+    string obs;
+    string robotnum;
+    string testnum;
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
+            mapname = argv[i + 1];
+        } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            obs = argv[i + 1];
+        } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+            robotnum = argv[i + 1];
+        } else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+            testnum = argv[i + 1];
+        }
+    }
 
     std::cout << "OMPL version: " << OMPL_VERSION << std::endl;
 
-    plan(baseName, numOfAgents, count);
+    plan(mapname, obs, robotnum, testnum);
 
     return 0;
 }
